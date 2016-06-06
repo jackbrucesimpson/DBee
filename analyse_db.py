@@ -11,26 +11,6 @@ def parse_experiment_numbers(experiment_numbers_str):
     experiment_numbers = [int(number) for number in experiment_numbers_list_str]
     return experiment_numbers
 
-def merge_time_period_beeids(time_group_beeids):
-    merged_time_groups_list = []
-    is_past_an_experiment_length = False
-
-    experiment_numbers = list(time_group_beeids.keys())
-    for i, each_time_group in enumerate(time_group_beeids[experiment_numbers[0]]):
-        current_beeid_list = each_time_group
-        for other_experiment_nums in experiment_numbers[1:]:
-            try:
-                current_beeid_list.extend(time_group_beeids[other_experiment_nums][i])
-            except Exception as e:
-                is_past_an_experiment_length = True
-
-        if is_past_an_experiment_length:
-            break
-        else:
-            merged_time_groups_list.append(current_beeid_list)#
-
-    return merged_time_groups_list
-
 
 
 
@@ -143,7 +123,7 @@ def main():
         combined_day_night_bee_ids = experiment.merge_day_night_beeids(day_grouped_beeids, night_grouped_beeids)
 
         for i in range(1000):
-            
+
 
         experiment.shuffle_bee_ids(combined_day_night_bee_ids, seed)
 
