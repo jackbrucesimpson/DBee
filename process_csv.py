@@ -5,7 +5,7 @@ import os
 import pandas as pd
 
 from database import DB, insert_db, query_db
-from processing_utils import get_next_bee_id, get_next_path_id, list_all_files, process_video_metadata, current_meta, create_hour_bins_in_video, insert_paths_coords
+from csv_utils import get_next_bee_id, get_next_path_id, list_all_files, process_video_metadata, current_meta, create_hour_bins_in_video, insert_paths_coords
 
 def main():
     CSV_DIRECTORY = sys.argv[1]

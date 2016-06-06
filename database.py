@@ -87,14 +87,15 @@ def insert_db(table, cols, values):
     db.close_cursor()
     db.close_conn()
 
-def query_db(table, cols, where_str=None, fetchall=True):
+def query_db(table, cols, where_str='', distinct=False, fetchall=True):
     """Query database columns with optional where statement and option to fetch multiple rows (default) or single row.
 
     Args:
         table: Table to query.
         cols: Column names with values of interest.
-        where_str: Where conditional, defaults to None.
-        fetchall: Default of True fetches all relevant rows, False fetches only a single row.
+        where_str: Where conditional, defaults to ''.
+        distinct: Only retrieves distinct rows, defaults to False.
+        fetchall: Default of True, fetches all relevant rows, False fetches only a single row.
 
     Example:
         insert_db(table='experiment_meta', cols=['ExperimentNum', 'HiveType'], values=[[1, 2, 'a'], [3, 4, 'b'], [5,6, 'c']])
@@ -109,10 +110,14 @@ def query_db(table, cols, where_str=None, fetchall=True):
         str_colnames += ', ' + colname
     str_colnames = str_colnames[2:] # remove extra comma at start
 
-    if where_str is None or len(where_str) < 1:
-        query_string = "SELECT {} FROM {};".format(str_colnames, table)
+    if len(where_str) > 0:
+        where_str = 'WHERE ' + where_str
+    if distinct:
+        distinct = 'DISTINCT'
     else:
-        query_string = "SELECT {} FROM {} WHERE {};".format(str_colnames, table, where_str)
+        distinct = ''
+
+    query_string = "SELECT {} {} FROM {} {};".format(distinct, str_colnames, table, where_str)
 
     db.cursor()
     if fetchall:
