@@ -14,6 +14,8 @@ def main():
     for hive_id in all_hive_ids:
         experiment = Experiment(hive_id)
         hour_blocks_in_experiment = experiment.retrieve_hour_blocks_in_experiment(hive_id)
+        print(hour_blocks_in_experiment)
+        '''
         day_hour_bins, night_hour_bins = experiment.group_hours_by_night_day(hour_blocks_in_experiment)
 
         day_grouped_beeids = experiment.retrieve_beeids_in_time_period(day_hour_bins)
@@ -28,6 +30,8 @@ def main():
 
 
         #experiments_object_list.append(experiment)
+
+        '''
 
 
     '''
