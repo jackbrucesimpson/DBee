@@ -77,24 +77,3 @@ def query_db(table, cols, distinct=False, fetchall=True, where='', group_conditi
     db.close_conn()
 
     return query_result
-
-def add_list_to_where_statement(colname_cond, group_list, current_where_str='', joining_str_cond=''):
-    """Extends a where conditional string with a list which you want to check a column being/not being in.
-
-    Args:
-        colname_cond: Column name and condition about list it is being compared to.
-        group_list: List of values to compare to column values.
-        current_where_str: String with current version of where statement (defaults to empty).
-        joining_str_cond: String with joining condition (defaults to empty).
-
-    Example:
-        add_list_to_where_statement(colname_cond = "ExperimentNum IN", group_list=[1,2,3,4,5,6,7,8,9,10], current_where_str = "ExperimentNum = 1", joining_str_cond = 'AND')
-
-    Example Returns:
-        ExperimentNum = 1 AND ExperimentNum IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-
-    Returns:
-        String where statement"""
-
-    current_where_str += ' ' + joining_str_cond + ' ' + colname_cond + ' (' + str(group_list)[1:-1] + ')'
-    return current_where_str
