@@ -3,14 +3,14 @@
 import datetime
 import random
 
-from .database import query_db, add_list_to_where_statement
+from database import query_db
 
 class Experiment:
     def __init__(self, hive_id):
         self.hive_id = hive_id
 
     def retrieve_hour_blocks_in_experiment(self, hive_id):
-        hours_query_result = query_db(table='bees', cols=['HourBin'], distinct=True, where_str='HiveID={}'.format(hive_id))
+        hours_query_result = query_db(table='bees', cols=['HourBin'], distinct=True, where='HiveID={}'.format(hive_id))
 
         experiment_hours = []
         for hour_row in hours_query_result:
@@ -53,8 +53,7 @@ class Experiment:
         group_beeids = []
         for each_group_hours in time_period_list_datetimes:
             beeids_in_time_group = []
-            where_str = add_list_to_where_statement(colname_cond = "HourBin IN", group_list=[str(time) for time in each_group_hours])
-            hours_query_result = query_db(table='bees', cols=['BeeID'], where_str=where_str)
+            hours_query_result = query_db(table='bees', cols=['BeeID'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
 
             for bee_row in hours_query_result:
                 beeids_in_time_group.append(bee_row['BeeID'])
@@ -89,8 +88,38 @@ class Experiment:
 
         return (shuffled_day_beeids_seed_dict, shuffled_night_beeids_seed_dict)
 
+    '''
+    def x():
+        select * from paths where beeid in (select beeid from bees where beeid=0);
+
+        where_str = add_list_to_where_statement(colname_cond = "HourBin IN", group_list=[str(time) for time in each_group_hours], current_where_str = )
+
+        hours_query_result = query_db(table='bee_coords', cols=['*'], where_str=where_str)
+
+        select * from bees where path=1 and beeid in (1,2,3)
+
+        select * from bee_coords where PathID in (select PathID from paths where BeeID in (1));
+    '''
 def main():
-    pass
+    #query_db(table='bees', cols=['HourBin'], where='HiveID=1', group_condition='AND HiveID IN', group_list=[1,2,3])
+    #query_db(table='bees', cols=['HourBin'], where='HiveID=1')
+    #query_db(table='bees', cols=['HourBin'], group_condition='HiveID IN', group_list=[1,2,3])
+
+    #query_db(table='paths', cols=['*'], where='BeeID IN', subquery='select beeid from bees where beeid=0')
+
+    #query_db(table='paths', cols=['*'], where='BeeID IN', subquery='select beeid from bees where beeid IN', subquery_list=[0,1])
+
+    #select * from paths where beeid in (select beeid from bees where beeid=0);
+
+    #beeid
+
+    #query_db(table, cols, distinct=False, fetchall=True, where='', join_operator='', group_condition='', group_list=[], subquery_where='', subquery_list=[]):
+
+
+
+    #print(x)
+
+
 
 if __name__ == "__main__":
     main()

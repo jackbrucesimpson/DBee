@@ -36,38 +36,37 @@ def insert_db(table, cols, values):
     db.close_cursor()
     db.close_conn()
 
-def query_db(table, cols, where_str='', distinct=False, fetchall=True):
-    """Query database columns with optional where statement and option to fetch multiple rows (default) or single row.
+def query_db(table, cols, distinct=False, fetchall=True, where='', group_condition='', group_list=[], subquery='', subquery_list=[]):
 
-    Args:
-        table: Table to query.
-        cols: Column names with values of interest.
-        where_str: Where conditional, defaults to ''.
-        distinct: Only retrieves distinct rows, defaults to False.
-        fetchall: Default of True, fetches all relevant rows, False fetches only a single row.
-
-    Example:
-        insert_db(table='experiment_meta', cols=['ExperimentNum', 'HiveType'], values=[[1, 2, 'a'], [3, 4, 'b'], [5,6, 'c']])
-
-    Returns:
-        List of dictionaries referring to column names unless fetchall is False, then it just returns a single dictionary"""
-
-    db = DB()
+    if distinct:
+        distinct = 'DISTINCT'
+    else:
+        distinct = ''
 
     str_colnames = ''
     for colname in cols:
         str_colnames += ', ' + colname
     str_colnames = str_colnames[2:] # remove extra comma at start
 
-    if len(where_str) > 0:
-        where_str = 'WHERE ' + where_str
-    if distinct:
-        distinct = 'DISTINCT'
-    else:
-        distinct = ''
+    where_statement = ''
+    if len(where) > 0 or len(group_condition) > 0 or len(subquery) > 0:
+        where_statement += 'WHERE'
 
-    query_string = "SELECT {} {} FROM {} {};".format(distinct, str_colnames, table, where_str)
+    if len(where) > 0:
+        where_statement += ' ' + where
 
+    if len(group_condition) > 0:
+        where_statement += ' ' + group_condition + ' (' + str(group_list)[1:-1] + ')'
+
+    if len(subquery) > 0:
+        where_statement += ' ' + ' (' + subquery
+        if len(subquery_list) > 0:
+            where_statement += ' ' + '(' + str(subquery_list)[1:-1] + ')'
+        where_statement += ')'
+
+    query_string = "SELECT {} {} FROM {} {};".format(distinct, str_colnames, table, where_statement)
+
+    db = DB()
     db.cursor()
     if fetchall:
         query_result = db.query(query_string).fetchall()
