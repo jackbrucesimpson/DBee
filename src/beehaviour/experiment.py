@@ -3,7 +3,7 @@
 import datetime
 import random
 
-from .database import DB, query_db, insert_db
+from .database import query_db, add_list_to_where_statement
 
 class Experiment:
     def __init__(self, hive_id):
@@ -51,45 +51,43 @@ class Experiment:
 
     def retrieve_beeids_in_time_period(self, time_period_list_datetimes):
         group_beeids = []
-        db = DB()
         for each_group_hours in time_period_list_datetimes:
             beeids_in_time_group = []
-            str_each_group_hours = str([str(time) for time in each_group_hours])[1:-1]
-            db.cursor()
-            query_string = "SELECT BeeID FROM bees WHERE HourBin IN ({})".format(str_each_group_hours)
-            hours_query_result = db.query(query_string).fetchall()
-            db.close_cursor()
+            where_str = add_list_to_where_statement(colname_cond = "HourBin IN", group_list=[str(time) for time in each_group_hours])
+            hours_query_result = query_db(table='bees', cols=['BeeID'], where_str=where_str)
 
             for bee_row in hours_query_result:
                 beeids_in_time_group.append(bee_row['BeeID'])
 
             group_beeids.append(beeids_in_time_group)
 
-        db.close_conn()
-
         return group_beeids
 
-    def merge_day_night_beeids(self, day_grouped_beeids, night_grouped_beeids):
+    def merge_shuffle_day_night_beeids(self, day_grouped_beeids, night_grouped_beeids, shuffle_iterations):
         combined_day_night_bee_ids = []
         for i, time_grouped_ids in enumerate(day_grouped_beeids):
             try:
                 group_day_night = day_grouped_beeids[i] + night_grouped_beeids[i]
                 combined_day_night_bee_ids.append(group_day_night)
             except Exception:
-                pass
-        return combined_day_night_bee_ids
+                break
 
-    def shuffle_bee_ids(self, combined_day_night_bee_ids):
-        random_day_grouped_beeids = []
-        random_night_grouped_beeids = []
+        shuffled_day_beeids_seed_dict = {}
+        shuffled_night_beeids_seed_dict = {}
+        for i in range(shuffle_iterations):
+            random.seed(i)
+            shuffled_day_beeids_seed_dict[i] = []
+            shuffled_night_beeids_seed_dict[i] = []
 
-        for time_grouped_ids in combined_day_night_bee_ids:
-            print(time_grouped_ids[0])
-            random.shuffle(time_grouped_ids)
-            print(time_grouped_ids[0], '\n')
-            half_len = int(len(time_grouped_ids)/2)
-            random_day_grouped_beeids.append(time_grouped_ids[:half_len])
-            random_night_grouped_beeids.append(time_grouped_ids[half_len:])
+            for j, combined_grouped_ids in enumerate(combined_day_night_bee_ids):
+                random.shuffle(combined_grouped_ids)
+                random_shuffled_day = combined_grouped_ids[:len(day_grouped_beeids[j])]
+                random_shuffled_night = combined_grouped_ids[len(day_grouped_beeids[j]):]
+
+                shuffled_day_beeids_seed_dict[i].append(random_shuffled_day)
+                shuffled_night_beeids_seed_dict[i].append(random_shuffled_night)
+
+        return (shuffled_day_beeids_seed_dict, shuffled_night_beeids_seed_dict)
 
 def main():
     pass

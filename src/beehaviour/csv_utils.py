@@ -4,7 +4,7 @@ import os
 import datetime
 
 from .database import insert_db, query_db
-from .metrics import calc_distance
+from .metrics import Metrics
 
 CAMERA_FRAMES_PER_SEC = 25
 FRAMES_IN_AN_HOUR = CAMERA_FRAMES_PER_SEC * 60 * 60
@@ -130,7 +130,7 @@ def insert_paths_coords(df, path_id, bee_id):
             x2 = list_x_coordinates[prev_frame_index]
             y2 = list_y_coordinates[prev_frame_index]
 
-            distance_moved = calc_distance(x1, y1, x2, y2)
+            distance_moved = Metrics.calc_distance(x1, y1, x2, y2)
             if distance_moved / difference_prev_frame > MAX_DISTANCE_PER_FRAME:
                 if len(x_path) > 0:
                     all_x_paths.append(x_path)

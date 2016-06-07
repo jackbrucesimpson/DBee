@@ -6,10 +6,12 @@ import random
 
 from beehaviour.experiment import Experiment
 from beehaviour.db_utils import parse_experiment_numbers
+from beehaviour.metrics import Metrics
 
 from beehaviour.database import insert_db
 
 def main():
+
     all_hive_ids = parse_experiment_numbers(sys.argv[1])
 
     experiments_object_list = []
@@ -21,18 +23,11 @@ def main():
         day_grouped_beeids = experiment.retrieve_beeids_in_time_period(day_hour_bins)
         night_grouped_beeids = experiment.retrieve_beeids_in_time_period(night_hour_bins)
 
-        combined_day_night_bee_ids = experiment.merge_day_night_beeids(day_grouped_beeids, night_grouped_beeids)
+        shuffled_day_beeids_seed_dict, shuffled_night_beeids_seed_dict = experiment.merge_shuffle_day_night_beeids(day_grouped_beeids, night_grouped_beeids, 100)
 
-        for i in range(1000):
+        print(shuffled_day_beeids_seed_dict.keys())
 
-
-        experiment.shuffle_bee_ids(combined_day_night_bee_ids, seed)
-
-
-        #experiments_object_list.append(experiment)
-
-        '''
-
+        
 
     '''
     day_experiments_beeids = {}
