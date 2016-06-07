@@ -177,12 +177,12 @@ def insert_paths_coords(df, path_id, bee_id):
                     finish_path = list_frames_present[i]
                     prev_frame_index = i
 
-            if list_frames_present[i] == max_frame:
-                if len(x_path) > 0:
-                    all_x_paths.append(x_path)
-                    all_y_paths.append(y_path)
-                    all_frame_num_paths.append(frame_num_path)
-                    start_end_path_frames.append((start_path, finish_path))
+        if list_frames_present[i] == max_frame:
+            if len(x_path) > 0:
+                all_x_paths.append(x_path)
+                all_y_paths.append(y_path)
+                all_frame_num_paths.append(frame_num_path)
+                start_end_path_frames.append((start_path, finish_path))
 
     paths_db_values = []
     bee_coords_db_values = []

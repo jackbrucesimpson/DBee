@@ -3,6 +3,7 @@
 import datetime
 import random
 import numpy as np
+import math
 
 from .database import query_db
 from .graphics import Graphics
@@ -103,6 +104,7 @@ class Experiment:
         coord_path_lists = {'X':[],'Y':[]}
         x_coords = []
         y_coords = []
+        print(bee_id, len(coord_rows_sorted))
         current_path_id = coord_rows_sorted[0]['PathID']
         for row in coord_rows_sorted:
             if row['PathID'] == current_path_id:
