@@ -3,7 +3,7 @@
 import os
 import datetime
 
-from database import insert_db, query_db
+from .database import insert_db, query_db
 from .metrics import calc_distance
 
 CAMERA_FRAMES_PER_SEC = 25

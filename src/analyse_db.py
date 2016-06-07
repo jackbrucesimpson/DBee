@@ -7,6 +7,8 @@ import random
 from beehaviour.experiment import Experiment
 from beehaviour.db_utils import parse_experiment_numbers
 
+from beehaviour.database import insert_db
+
 def main():
     all_hive_ids = parse_experiment_numbers(sys.argv[1])
 

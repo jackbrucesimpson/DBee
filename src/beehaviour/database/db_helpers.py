@@ -1,3 +1,5 @@
+from .db import DB
+
 def insert_db(table, cols, values):
     """Inserts list of lists into the table and columns of the database. It handles string conversion and also potential crashes that can occur when writing too many rows at the same time.
 

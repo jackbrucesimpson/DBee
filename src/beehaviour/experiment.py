@@ -3,7 +3,7 @@
 import datetime
 import random
 
-from database import DB
+from .database import DB, query_db, insert_db
 
 class Experiment:
     def __init__(self, hive_id):
