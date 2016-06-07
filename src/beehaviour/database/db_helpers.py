@@ -1,56 +1,3 @@
-import pymysql
-import gc
-import os
-
-class DB:
-    _db_con = None
-    _db_cur = None
-
-    def __init__(self):
-        password = os.environ.get("DBPW", None)
-        self._db_con = pymysql.connect(host='localhost', port=3306, user='root', passwd=password, db='beedb')
-
-    def cursor(self):
-        try:
-            self._db_cur = self._db_con.cursor(pymysql.cursors.DictCursor)
-        except Exception as e:
-            print("Cursor failed")
-            print(str(e))
-            self.close_conn()
-            gc.collect()
-            return "Cursor failed"
-
-    def query(self, query): #, params
-        try:
-            self._db_cur.execute(query)
-            return self._db_cur
-        except Exception as e:
-            print("query failed")
-            print(str(e))
-            self.close_cursor()
-            self.close_conn()
-            gc.collect()
-            return "Query failed"
-
-    def modify(self, insert):
-        try:
-            self._db_cur.execute(insert)
-            self._db_con.commit()
-        except Exception as e:
-            print('insert failed')
-            print(str(e))
-            self.close_cursor()
-            self.close_conn()
-            gc.collect()
-            return "Insert failed"
-
-    def close_cursor(self):
-        self._db_cur.close()
-
-    def close_conn(self):
-        self._db_con.close()
-        gc.collect()
-
 def insert_db(table, cols, values):
     """Inserts list of lists into the table and columns of the database. It handles string conversion and also potential crashes that can occur when writing too many rows at the same time.
 
@@ -150,9 +97,3 @@ def add_list_to_where_statement(colname_cond, group_list, current_where_str='', 
 
     current_where_str += ' ' + joining_str_cond + ' ' + colname_cond + ' (' + str(group_list)[1:-1] + ')'
     return current_where_str
-
-def main():
-    pass
-
-if __name__ == '__main__':
-    main()

@@ -4,8 +4,8 @@ import sys
 import datetime
 import random
 
-from database import DB
-from db_utils import Experiment, parse_experiment_numbers
+from beehaviour.experiment import Experiment
+from beehaviour.db_utils import parse_experiment_numbers
 
 def main():
     all_hive_ids = parse_experiment_numbers(sys.argv[1])

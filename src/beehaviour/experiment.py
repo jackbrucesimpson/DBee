@@ -5,11 +5,6 @@ import random
 
 from database import DB
 
-def parse_experiment_numbers(experiment_numbers_str):
-    experiment_numbers_list_str = experiment_numbers_str.split(',')
-    experiment_numbers = [int(number) for number in experiment_numbers_list_str]
-    return experiment_numbers
-
 class Experiment:
     def __init__(self, hive_id):
         self.hive_id = hive_id

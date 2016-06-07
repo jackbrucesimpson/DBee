@@ -2,8 +2,9 @@
 
 import os
 import datetime
-import math
-from database import DB, insert_db, query_db, add_list_to_where_statement
+
+from database import insert_db, query_db
+from .metrics import calc_distance
 
 CAMERA_FRAMES_PER_SEC = 25
 FRAMES_IN_AN_HOUR = CAMERA_FRAMES_PER_SEC * 60 * 60
@@ -72,11 +73,6 @@ def create_hour_bins_in_video(video_start_datetime, max_video_frame):
     #have to convert to strings outside loop because of strange time.delta issue
     hour_bins_in_video = [str(dt) for dt in hour_bins_in_video]
     return (hour_bins_in_video, frame_cutoff)
-
-def calc_distance(x1, y1, x2, y2):
-    x_dist = (x2 - x1)
-    y_dist = (y2 - y1)
-    return math.sqrt(x_dist * x_dist + y_dist * y_dist)
 
 def insert_paths_coords(df, path_id, bee_id):
     """Iterate through dataframe of an individual bee and extract paths, filling in short gaps. It will update the DB with new paths.
