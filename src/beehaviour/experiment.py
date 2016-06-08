@@ -69,7 +69,7 @@ class Experiment:
             for bee_row in hours_query_result:
                 beeids_in_time_group.append(bee_row['BeeID'])
 
-            group_beeids.append(beeids_in_time_group)
+            group_beeids.append(beeids_in_time_group[:100])
 
         return group_beeids
 
@@ -148,7 +148,7 @@ class Experiment:
         spread = 0
         for y_c in range(0, normalised_individual_heatmap.shape[0]):
             for x_c in range(0, normalised_individual_heatmap.shape[1]):
-                spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_heatmap[y_c, x_c]
+                spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_individual_heatmap[y_c, x_c]
 
         Graphics.plot_heatmaps(normalised_individual_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
         Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
