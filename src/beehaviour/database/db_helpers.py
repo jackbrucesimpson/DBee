@@ -36,7 +36,7 @@ def insert_db(table, cols, values):
     db.close_cursor()
     db.close_conn()
 
-def query_db(table, cols, distinct=False, fetchall=True, where='', group_condition='', group_list=[], subquery='', subquery_list=[]):
+def query_db(table, cols, distinct=False, fetchall=True, where='', group_condition='', group_list=[], subquery='', subquery_list=[], order=''):
 
     if distinct:
         distinct = 'DISTINCT'
@@ -63,6 +63,10 @@ def query_db(table, cols, distinct=False, fetchall=True, where='', group_conditi
         if len(subquery_list) > 0:
             where_statement += ' ' + '(' + str(subquery_list)[1:-1] + ')'
         where_statement += ')'
+
+    if len(order) > 0:
+        where_statement += ' ' + order
+
 
     query_string = "SELECT {} {} FROM {} {};".format(distinct, str_colnames, table, where_statement)
 
