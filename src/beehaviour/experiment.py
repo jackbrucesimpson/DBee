@@ -4,6 +4,7 @@ import datetime
 import random
 import numpy as np
 import math
+from scipy import ndimage
 
 from .database import query_db
 from .graphics import Graphics
@@ -72,7 +73,7 @@ class Experiment:
 
         return group_beeids
 
-    def merge_shuffle_day_night_beeids(self, day_grouped_beeids, night_grouped_beeids, shuffle_iterations):
+    def merge_day_night_beeids(self, day_grouped_beeids, night_grouped_beeids):
         combined_day_night_bee_ids = []
         for i, time_grouped_ids in enumerate(day_grouped_beeids):
             try:
@@ -81,117 +82,40 @@ class Experiment:
             except Exception:
                 break
 
-        shuffled_day_beeids_seed_dict = {}
-        shuffled_night_beeids_seed_dict = {}
+        return combined_day_night_bee_ids
+
+    def shuffle_day_night_beeids(self, day_night_period_bee_ids, day_grouped_beeids, shuffle_iterations):
+        shuffled_day_beeids = []
+        shuffled_night_beeids = []
         for i in range(shuffle_iterations):
-            random.seed(i)
-            shuffled_day_beeids_seed_dict[i] = []
-            shuffled_night_beeids_seed_dict[i] = []
+            random.shuffle(day_night_period_bee_ids)
+            shuffled_day_beeids.append(day_night_period_bee_ids[:len(day_grouped_beeids)])
+            shuffled_night_beeids.append(day_night_period_bee_ids[len(day_grouped_beeids):])
 
-            for j, combined_grouped_ids in enumerate(combined_day_night_bee_ids):
-                random.shuffle(combined_grouped_ids)
-                random_shuffled_day = combined_grouped_ids[:len(day_grouped_beeids[j])]
-                random_shuffled_night = combined_grouped_ids[len(day_grouped_beeids[j]):]
-
-                shuffled_day_beeids_seed_dict[i].append(random_shuffled_day)
-                shuffled_night_beeids_seed_dict[i].append(random_shuffled_night)
-
-        return (shuffled_day_beeids_seed_dict, shuffled_night_beeids_seed_dict)
+        return (shuffled_day_beeids, shuffled_night_beeids)
 
     def retrieve_bee_id_path(self, list_bee_ids):
         coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID', 'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'], where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=list_bee_ids, order='ORDER BY Frame ASC')
 
-        
+        bee_id_dict = {bee_id:Bee(bee_id) for bee_id in list_bee_ids}
 
-        bee_id_dict = {}
         for row in coord_rows:
-            if row['BeeID'] in bee_id_dict_rows.keys():
-                bee_id_dict_rows[row['BeeID']].append(row)
-            else:
-                bee_id_dict_rows[row['BeeID']] = [row]
+            bee_id = row['BeeID']
+            if bee_id_dict[bee_id].last_path_id == row['PathID']:
+                bee_id_dict[bee_id].X[-1].append(row['X'])
+                bee_id_dict[bee_id].Y[-1].append(row['Y'])
 
-        #coord_rows_sorted = sorted(coord_rows, key=lambda k: k['Frame'])
+            elif bee_id_dict[bee_id].last_path_id is None:
+                bee_id_dict[bee_id].last_path_id = row['PathID']
 
-        bee_id_dict_rows[0] = sorted(bee_id_dict_rows[0], key=lambda k: k['Frame'])
+            elif bee_id_dict[bee_id].last_path_id != row['PathID']:
+                bee_id_dict[bee_id].X.append([row['X']])
+                bee_id_dict[bee_id].Y.append([row['Y']])
+                bee_id_dict[bee_id].last_path_id = row['PathID']
 
-        print(bee_id_dict_rows[0])
+        return bee_id_dict
 
-
-
-
-
-        #create_temp_table = "CREATE TEMPORARY TABLE IF NOT EXISTS CurrentBeeIDs(BeeID int unsigned NOT NULL, PRIMARY KEY (BeeID));"
-        #insert_list = list_bee_ids
-        #temp_select = "select paths.BeeID, bee_coords.PathID, bee_coords.Frame, bee_coords.X, bee_coords.Y from bee_coords, paths WHERE BeeID IN (SELECT BeeID FROM CurrentBeeIDs) AND bee_coords.PathID = paths.PathID;"
-
-        #select * from paths where
-        time1 = time.time()
-
-        time2 = time.time()
-
-        print(coord_rows[0])
-        print(len(coord_rows))
-        print(time2-time1)
-
-        #print(1)
-        #coord_rows = query_db(table='paths', cols=['BeeID', 'PathID'], group_condition='BeeID IN', group_list=list_bee_ids)
-
-        #pids = [row['PathID'] for row in coord_rows]
-        #print(pids[0])
-
-        #c2 = query_db(table='bee_coords', cols=['*'], group_condition='PathID IN', group_list=pids)
-        #print(c2[0])
-
-        #coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID',
-                            #'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'],
-                            #where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=list_bee_ids, order='ORDER BY Frame ASC')
-
-
-        #temp_table_comparison(create_temp_table,insert_list,temp_select)
-        #select paths.BeeID, bee_coords.PathID, bee_coords.Frame, bee_coords.X, bee_coords.Y from bee_coords, paths WHERE BeeID=1 AND bee_coords.PathID = paths.PathID;
-
-        '''
-        bee_id_dict_rows = {}
-        print(len(coord_rows))
-        for row in coord_rows:
-            if row['BeeID'] in bee_id_dict_rows.keys():
-                bee_id_dict_rows[row['BeeID']].append(row)
-            else:
-                bee_id_dict_rows[row['BeeID']] = [row]
-
-        #coord_rows_sorted = sorted(coord_rows, key=lambda k: k['Frame'])
-
-        bee_id_dict_rows[0] = sorted(bee_id_dict_rows[0], key=lambda k: k['Frame'])
-
-        print(bee_id_dict_rows[0])
-        '''
-
-        '''
-
-
-        coord_path_lists = {'X':[],'Y':[]}
-        x_coords = []
-        y_coords = []
-        #print(bee_id, len(coord_rows_sorted))
-        current_path_id = coord_rows_sorted[0]['PathID']
-        for row in coord_rows_sorted:
-            if row['PathID'] == current_path_id:
-                x_coords.append(row['X'])
-                y_coords.append(row['Y'])
-            else:
-                coord_path_lists['X'].append(x_coords)
-                coord_path_lists['Y'].append(y_coords)
-                x_coords = [row['X']]
-                y_coords = [row['Y']]
-                current_path_id = row['PathID']
-
-        coord_path_lists['X'].append(x_coords)
-        coord_path_lists['Y'].append(y_coords)
-
-        return coord_path_lists
-        '''
-
-    def generate_heatmaps(self, list_bee_ids, num_x_cells, num_y_cells, plot_title):
+    def generate_heatmaps(self, list_bee_ids, bee_id_object_dict, num_x_cells, num_y_cells, plot_title):
         x_bins = 3840/num_x_cells
         y_bins = 2160/num_y_cells
         cells_visited = []
@@ -199,16 +123,12 @@ class Experiment:
         individual_heatmap = np.zeros((num_y_cells,num_x_cells))
         all_xy_heatmap = np.zeros((num_y_cells,num_x_cells))
 
-        self.retrieve_bee_id_path(list_bee_ids)
-
-        '''
-
         for bee_id in list_bee_ids:
-            coord_path_lists = self.retrieve_bee_id_path(bee_id)
-            for i, x_paths_list in enumerate(coord_path_lists['X']):
-                for j, x_coord in enumerate(coord_path_lists['X'][i]):
-                    x = int(coord_path_lists['X'][i][j] / x_bins)
-                    y = int(coord_path_lists['Y'][i][j] / y_bins)
+            bee = bee_id_object_dict[bee_id]
+            for i, x_paths_list in enumerate(bee.X):
+                for j, x_coord in enumerate(bee.X[i]):
+                    x = int(bee.X[i][j] / x_bins)
+                    y = int(bee.Y[i][j] / y_bins)
                     all_xy_heatmap[y, x] += 1
                     if [y, x] not in cells_visited:
                         individual_heatmap[y, x] += 1
@@ -219,16 +139,21 @@ class Experiment:
             #centre = append.((np.nan,np.nan))
             #spread = append.((np.nan))
 
-        individual_heatmap[individual_heatmap < 1] = 1
-        all_xy_heatmap[all_xy_heatmap < 1] = 1
+        #individual_heatmap[individual_heatmap < 1] = 1
+        #all_xy_heatmap[all_xy_heatmap < 1] = 1
         normalised_individual_heatmap = individual_heatmap / individual_heatmap.sum()
         normalised_all_xy_heatmap = all_xy_heatmap / all_xy_heatmap.sum()
 
+        centre = ndimage.measurements.center_of_mass(normalised_individual_heatmap)
+        spread = 0
+        for y_c in range(0, normalised_individual_heatmap.shape[0]):
+            for x_c in range(0, normalised_individual_heatmap.shape[1]):
+                spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_heatmap[y_c, x_c]
+
         Graphics.plot_heatmaps(normalised_individual_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
         Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
-        '''
-    #def x():
-        #Metrics.generate_heatmaps
+
+        return spread
 
 def main():
     pass
