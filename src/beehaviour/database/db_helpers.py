@@ -38,6 +38,7 @@ def insert_db(table, cols, values):
 
 def query_db(table, cols, distinct=False, fetchall=True, where='', group_condition='', group_list=[], subquery='', subquery_list=[], order=''):
 
+
     if distinct:
         distinct = 'DISTINCT'
     else:
@@ -81,3 +82,4 @@ def query_db(table, cols, distinct=False, fetchall=True, where='', group_conditi
     db.close_conn()
 
     return query_result
+    

@@ -5,6 +5,7 @@ import random
 import numpy as np
 import math
 from scipy import ndimage
+from multiprocessing import Pool
 
 from .database import query_db
 from .graphics import Graphics
@@ -13,6 +14,10 @@ from .bee import Bee
 class Experiment:
     def __init__(self, hive_id):
         self.hive_id = hive_id
+        self.num_x_cells = 40
+        self.num_y_cells = 20
+        self.x_bins = 3840/self.num_x_cells
+        self.y_bins = 2160/self.num_y_cells
 
     @staticmethod
     def calc_distance(x1, y1, x2, y2):
@@ -69,7 +74,7 @@ class Experiment:
             for bee_row in hours_query_result:
                 beeids_in_time_group.append(bee_row['BeeID'])
 
-            group_beeids.append(beeids_in_time_group[:100])
+            group_beeids.append(beeids_in_time_group) #[:100]
 
         return group_beeids
 
@@ -94,53 +99,39 @@ class Experiment:
 
         return (shuffled_day_beeids, shuffled_night_beeids)
 
-    def retrieve_bee_id_path(self, list_bee_ids):
-        coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID', 'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'], where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=list_bee_ids, order='ORDER BY Frame ASC')
-
+    def retrieve_process_bees(self, list_bee_ids):
         bee_id_dict = {bee_id:Bee(bee_id) for bee_id in list_bee_ids}
 
-        for row in coord_rows:
-            bee_id = row['BeeID']
-            if bee_id_dict[bee_id].last_path_id == row['PathID']:
-                bee_id_dict[bee_id].X[-1].append(row['X'])
-                bee_id_dict[bee_id].Y[-1].append(row['Y'])
+        for i in range(0, len(list_bee_ids),100):
+            subset_bee_ids = list_bee_ids[i:i+100]
+            coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID', 'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'], where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=subset_bee_ids, order='ORDER BY Frame ASC')
 
-            elif bee_id_dict[bee_id].last_path_id is None:
-                bee_id_dict[bee_id].last_path_id = row['PathID']
-
-            elif bee_id_dict[bee_id].last_path_id != row['PathID']:
-                bee_id_dict[bee_id].X.append([row['X']])
-                bee_id_dict[bee_id].Y.append([row['Y']])
-                bee_id_dict[bee_id].last_path_id = row['PathID']
+            for row in coord_rows:
+                bee_id = row['BeeID']
+                x = int(row['X'] / self.x_bins)
+                y = int(row['Y'] / self.y_bins)
+                yx_coord = (y, x)
+                if yx_coord in bee_id_dict[bee_id].cells_visited:
+                    bee_id_dict[bee_id].cells_visited[yx_coord] += 1
+                else:
+                    bee_id_dict[bee_id].cells_visited[yx_coord] = 1
 
         return bee_id_dict
 
-    def generate_heatmaps(self, list_bee_ids, bee_id_object_dict, num_x_cells, num_y_cells, plot_title):
-        x_bins = 3840/num_x_cells
-        y_bins = 2160/num_y_cells
-        cells_visited = []
-
-        individual_heatmap = np.zeros((num_y_cells,num_x_cells))
-        all_xy_heatmap = np.zeros((num_y_cells,num_x_cells))
+    def generate_heatmaps(self, list_bee_ids, bee_id_dict, plot_title):
+        individual_heatmap = np.zeros((self.num_y_cells, self.num_x_cells))
+        all_xy_heatmap = np.zeros((self.num_y_cells, self.num_x_cells))
 
         for bee_id in list_bee_ids:
-            bee = bee_id_object_dict[bee_id]
-            for i, x_paths_list in enumerate(bee.X):
-                for j, x_coord in enumerate(bee.X[i]):
-                    x = int(bee.X[i][j] / x_bins)
-                    y = int(bee.Y[i][j] / y_bins)
-                    all_xy_heatmap[y, x] += 1
-                    if [y, x] not in cells_visited:
-                        individual_heatmap[y, x] += 1
-                        cells_visited.append([y, x])
+            bee = bee_id_dict[bee_id]
+            for yx_coord in bee.cells_visited:
+                y, x = yx_coord
+                all_xy_heatmap[y, x] += bee.cells_visited[yx_coord]
+                individual_heatmap[y, x] += 1
 
         if individual_heatmap.sum() == 0:
             return None
-            #centre = append.((np.nan,np.nan))
-            #spread = append.((np.nan))
 
-        #individual_heatmap[individual_heatmap < 1] = 1
-        #all_xy_heatmap[all_xy_heatmap < 1] = 1
         normalised_individual_heatmap = individual_heatmap / individual_heatmap.sum()
         normalised_all_xy_heatmap = all_xy_heatmap / all_xy_heatmap.sum()
 
@@ -150,8 +141,8 @@ class Experiment:
             for x_c in range(0, normalised_individual_heatmap.shape[1]):
                 spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_individual_heatmap[y_c, x_c]
 
-        Graphics.plot_heatmaps(normalised_individual_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
-        Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.05, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
+        Graphics.plot_heatmaps(normalised_individual_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
+        Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
 
         return spread
 

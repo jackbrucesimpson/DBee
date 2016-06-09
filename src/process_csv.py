@@ -13,6 +13,7 @@ def main():
     HIVE_ID = int(sys.argv[3])
     HIVE_TYPE = int(sys.argv[4])
     METADATA_FILE = 'video_metadata.txt'
+    MIN_TIME_TRACKED = 25 * 5
     NEXT_MAX_BEE_ID = get_next_bee_id()
     NEXT_MAX_PATH_ID = get_next_path_id()
 
@@ -42,6 +43,8 @@ def main():
             list_bees_current_hour = []
             for group_name, bee_df in bees_current_hour_df.groupby('BeeID'):
                 length_bee_tracked = len(bee_df['Frame'])
+                if length_bee_tracked < MIN_TIME_TRACKED:
+                    continue
                 remove_zero_tags = bee_df[bee_df['Tag'] > 0]
                 num_tags_classified = len(remove_zero_tags['Tag'])
                 if num_tags_classified > 0:

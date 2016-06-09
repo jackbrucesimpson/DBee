@@ -41,7 +41,6 @@ def temp_table_comparison(create_temp_table, insert_list, temp_select):
 
     print(query_result)
 
-
 def main():
     pass
 

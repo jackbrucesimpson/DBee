@@ -5,8 +5,9 @@ class Bee:
         self.bee_id = bee_id
         self.tag = None
         self.last_path_id = None
-        self.X = [[]]
-        self.Y = [[]]
+        self.cells_visited = {}
+        #self.X = [[]]
+        #self.Y = [[]]
 
 def main():
     pass
