@@ -18,6 +18,7 @@ class Experiment:
         self.num_y_cells = 20
         self.x_bins = 3840/self.num_x_cells
         self.y_bins = 2160/self.num_y_cells
+        self.frames_per_window = 25
 
     @staticmethod
     def calc_distance(x1, y1, x2, y2):
@@ -111,10 +112,42 @@ class Experiment:
                 x = int(row['X'] / self.x_bins)
                 y = int(row['Y'] / self.y_bins)
                 yx_coord = (y, x)
+                # heatmap location
                 if yx_coord in bee_id_dict[bee_id].cells_visited:
                     bee_id_dict[bee_id].cells_visited[yx_coord] += 1
                 else:
                     bee_id_dict[bee_id].cells_visited[yx_coord] = 1
+
+                # calculate speeds
+                if bee_id_dict[bee_id].last_path_id == row['PathID']:
+                    bee_id_dict[bee_id].path_length += 1
+                    if bee_id_dict[bee_id].path_length == self.frames_per_window:
+                        bee_id_dict[bee_id].list_speeds.append(Experiment.calc_distance(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y))
+
+                        bee_id_dict[bee_id].path_length = 1
+                        bee_id_dict[bee_id].last_x = row['X']
+                        bee_id_dict[bee_id].last_y = row['Y']
+
+
+                else:
+                    bee_id_dict[bee_id].last_path_id = row['PathID']
+                    bee_id_dict[bee_id].path_length = 1
+                    bee_id_dict[bee_id].last_x = row['X']
+                    bee_id_dict[bee_id].last_y = row['Y']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         return bee_id_dict
 

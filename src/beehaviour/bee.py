@@ -5,9 +5,12 @@ class Bee:
         self.bee_id = bee_id
         self.tag = None
         self.last_path_id = None
+        self.last_x = None
+        self.last_y = None
+        self.path_length = None
+        self.list_speeds = []
+        self.list_angles = []
         self.cells_visited = {}
-        #self.X = [[]]
-        #self.Y = [[]]
 
 def main():
     pass

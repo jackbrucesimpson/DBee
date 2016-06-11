@@ -29,7 +29,6 @@ def main():
 
         for i, day_night_period_bee_ids in enumerate(combined_day_night_bee_ids[:1]):
             print('Period', i)
-            t0 = time.time()
 
             bee_id_dict = experiment.retrieve_process_bees(combined_day_night_bee_ids[i])
             shuffled_day_beeids, shuffled_night_beeids = experiment.shuffle_day_night_beeids(combined_day_night_bee_ids[i], day_grouped_beeids[i], 100)
@@ -41,17 +40,14 @@ def main():
             shuffled_day_spread_list = []
             shuffled_night_spread_list = []
             for j, shuffled_day in enumerate(shuffled_day_beeids):
-                shuffled_day_spread = experiment.generate_heatmaps(shuffled_day_beeids[j], bee_id_dict, 40, 20, 'shuffled_day_{}_{}_'.format(i, j))
-                shuffled_night_spread = experiment.generate_heatmaps(shuffled_night_beeids[j], bee_id_dict, 40, 20, 'shuffled_night_{}_{}_'.format(i, j))
+                shuffled_day_spread = experiment.generate_heatmaps(shuffled_day_beeids[j], bee_id_dict, 'shuffled_day_{}_{}_'.format(i, j))
+                shuffled_night_spread = experiment.generate_heatmaps(shuffled_night_beeids[j], bee_id_dict, 'shuffled_night_{}_{}_'.format(i, j))
 
                 shuffled_day_spread_list.append(shuffled_day_spread)
                 shuffled_night_spread_list.append(shuffled_night_spread)
 
             print(shuffled_day_spread_list)
             print(shuffled_night_spread_list, '\n')
-
-            t1 = time.time()
-            print(time1-time0)
 
 if __name__ == "__main__":
     main()
