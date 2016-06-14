@@ -27,6 +27,7 @@ def main():
 
         combined_day_night_bee_ids = experiment.merge_day_night_beeids(day_grouped_beeids, night_grouped_beeids)
 
+        output = {spread:[], speed:[], is_day:[], day_num:[], is_real_result:[]}
         for i, day_night_period_bee_ids in enumerate(combined_day_night_bee_ids[:1]):
             print('Period', i)
 
@@ -35,19 +36,30 @@ def main():
 
             day_spread = experiment.generate_heatmaps(day_grouped_beeids[i], bee_id_dict, 'day_{}_'.format(i))
             night_spread = experiment.generate_heatmaps(night_grouped_beeids[i], bee_id_dict, 'night_{}_'.format(i))
-            print(day_spread, night_spread)
+            day_speed = experiment.generate_speeds(day_grouped_beeids[i], bee_id_dict)
+            night_speed = experiment.generate_speeds(night_grouped_beeids[i], bee_id_dict)
 
-            shuffled_day_spread_list = []
-            shuffled_night_spread_list = []
+            print(day_spread, night_spread, day_speed, night_speed)
+            output['spread'].extend([day_spread, night_spread])
+            output['speed'].extend([day_speed, night_speed])
+            output['is_day'].extend([1, 0])
+            output['day_num'].extend([i, i])
+            output['is_real_result'].extend([1, 1])
+
             for j, shuffled_day in enumerate(shuffled_day_beeids):
                 shuffled_day_spread = experiment.generate_heatmaps(shuffled_day_beeids[j], bee_id_dict, 'shuffled_day_{}_{}_'.format(i, j))
                 shuffled_night_spread = experiment.generate_heatmaps(shuffled_night_beeids[j], bee_id_dict, 'shuffled_night_{}_{}_'.format(i, j))
+                shuffled_day_speed = experiment.generate_speeds(shuffled_day_beeids[j], bee_id_dict)
+                shuffled_night_speed = experiment.generate_speeds(shuffled_night_beeids[j], bee_id_dict)
 
-                shuffled_day_spread_list.append(shuffled_day_spread)
-                shuffled_night_spread_list.append(shuffled_night_spread)
+                output['spread'].extend([shuffled_day_spread, shuffled_night_spread])
+                output['speed'].extend([shuffled_day_speed, shuffled_night_speed])
+                output['is_day'].extend([1, 0])
+                output['day_num'].extend([i, i])
+                output['is_real_result'].extend([0, 0])
 
-            print(shuffled_day_spread_list)
-            print(shuffled_night_spread_list, '\n')
+        output_df = pd.DataFrame(output)
+        output_df.to_csv('/Users/jack/Research/DBee/results/{}_output.csv'.format(hive_id))
 
 if __name__ == "__main__":
     main()

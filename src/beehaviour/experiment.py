@@ -19,12 +19,23 @@ class Experiment:
         self.x_bins = 3840/self.num_x_cells
         self.y_bins = 2160/self.num_y_cells
         self.frames_per_window = 25
+        self.min_angle_speed = 10
 
     @staticmethod
     def calc_distance(x1, y1, x2, y2):
         x_dist = (x2 - x1)
         y_dist = (y2 - y1)
         return math.sqrt(x_dist * x_dist + y_dist * y_dist)
+
+    @staticmethod
+    def absolute_angle_degree(x1, y1, x2, y2):
+        deltax = x2 - x1
+        deltay = y2 - y1
+        rad = math.atan2(deltay, deltax)
+        angle = math.degrees(rad)
+        if angle < 0:
+            angle += 360
+        return angle
 
     def retrieve_hour_blocks_in_experiment(self, hive_id):
         hours_query_result = query_db(table='bees', cols=['HourBin'], distinct=True, where='HiveID={}'.format(hive_id))
@@ -118,11 +129,15 @@ class Experiment:
                 else:
                     bee_id_dict[bee_id].cells_visited[yx_coord] = 1
 
-                # calculate speeds
+                # calculate speeds and angles
                 if bee_id_dict[bee_id].last_path_id == row['PathID']:
                     bee_id_dict[bee_id].path_length += 1
                     if bee_id_dict[bee_id].path_length == self.frames_per_window:
-                        bee_id_dict[bee_id].list_speeds.append(Experiment.calc_distance(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y))
+                        current_speed = Experiment.calc_distance(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y)
+                        bee_id_dict[bee_id].list_speeds.append(current_speed)
+                        if current_speed > self.min_angle_speed:
+                            angle = Experiment.absolute_angle_degree(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y)
+                            bee_id_dict[bee_id].list_angles.append(angle)
 
                         bee_id_dict[bee_id].path_length = 1
                         bee_id_dict[bee_id].last_x = row['X']
@@ -134,20 +149,6 @@ class Experiment:
                     bee_id_dict[bee_id].path_length = 1
                     bee_id_dict[bee_id].last_x = row['X']
                     bee_id_dict[bee_id].last_y = row['Y']
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         return bee_id_dict
 
@@ -178,6 +179,22 @@ class Experiment:
         Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
 
         return spread
+
+    def generate_speeds(self, list_bee_ids, bee_id_dict):
+        all_speeds = []
+        for bee_id in list_bee_ids:
+            bee = bee_id_dict[bee_id]
+            all_speeds.extend(bee.list_speeds)
+
+        return np.mean(all_speeds)
+
+    def generate_angles(self, list_bee_ids, bee_id_dict):
+        all_angles = []
+        for bee_id in list_bee_ids:
+            bee = bee_id_dict[bee_id]
+            all_speeds.extend(bee.list_angles)
+
+        return all_angles
 
 def main():
     pass
