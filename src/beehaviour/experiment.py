@@ -106,12 +106,19 @@ class Experiment:
         return combined_day_night_bee_ids
 
     def shuffle_day_night_beeids(self, day_night_period_bee_ids, day_grouped_beeids, shuffle_iterations):
+        '''Sampling with replacement at the moment, will probably rename later if I stick with it'''
         shuffled_day_beeids = []
         shuffled_night_beeids = []
+        num_day_beeids = len(day_grouped_beeids)
+        num_night_beeids = len(day_night_period_bee_ids) - num_day_beeids
         for i in range(shuffle_iterations):
-            random.shuffle(day_night_period_bee_ids)
-            shuffled_day_beeids.append(day_night_period_bee_ids[:len(day_grouped_beeids)])
-            shuffled_night_beeids.append(day_night_period_bee_ids[len(day_grouped_beeids):])
+            shuffled_day_beeids.append(np.random.choice(day_night_period_bee_ids, num_day_beeids, replace=True))
+            shuffled_night_beeids.append(np.random.choice(day_night_period_bee_ids, num_night_beeids, replace=True))
+
+            # from when I was shuffling instead of sampling
+            #random.shuffle(day_night_period_bee_ids)
+            #shuffled_day_beeids.append(day_night_period_bee_ids[:len(day_grouped_beeids)])
+            #shuffled_night_beeids.append(day_night_period_bee_ids[len(day_grouped_beeids):])
 
         return (shuffled_day_beeids, shuffled_night_beeids)
 

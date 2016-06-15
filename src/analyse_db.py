@@ -3,10 +3,13 @@
 import sys
 import datetime
 import random
-random.seed(1)
+import numpy as np
 import pandas as pd
 
 from beehaviour.experiment import Experiment
+
+random.seed(1)
+np.random.seed(1)
 
 def parse_experiment_numbers(experiment_numbers_str):
     experiment_numbers_list_str = experiment_numbers_str.split(',')
