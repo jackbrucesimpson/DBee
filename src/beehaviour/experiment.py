@@ -5,9 +5,8 @@ import random
 import numpy as np
 import math
 from scipy import ndimage
-from multiprocessing import Pool
 
-from .database import query_db
+from .db import DB
 from .graphics import Graphics
 from .bee import Bee
 
@@ -38,7 +37,10 @@ class Experiment:
         return angle
 
     def retrieve_hour_blocks_in_experiment(self, hive_id):
-        hours_query_result = query_db(table='bees', cols=['HourBin'], distinct=True, where='HiveID={}'.format(hive_id))
+        db = DB()
+        query_statement = db.query_string(table='bees', cols=['HourBin'], distinct=True, where='HiveID={}'.format(hive_id))
+        hours_query_result = db.query(query_statement)
+        db.close()
 
         experiment_hours = []
         for hour_row in hours_query_result:
@@ -79,15 +81,17 @@ class Experiment:
 
     def retrieve_beeids_in_time_period(self, time_period_list_datetimes):
         group_beeids = []
+        db = DB()
         for each_group_hours in time_period_list_datetimes:
             beeids_in_time_group = []
-            hours_query_result = query_db(table='bees', cols=['BeeID'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
-
+            query_statement = db.query_string(table='bees', cols=['BeeID'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
+            hours_query_result = db.query(query_statement)
             for bee_row in hours_query_result:
                 beeids_in_time_group.append(bee_row['BeeID'])
 
-            group_beeids.append(beeids_in_time_group) #[:100]
+            group_beeids.append(beeids_in_time_group)
 
+        db.close()
         return group_beeids
 
     def merge_day_night_beeids(self, day_grouped_beeids, night_grouped_beeids):
@@ -114,9 +118,11 @@ class Experiment:
     def retrieve_process_bees(self, list_bee_ids):
         bee_id_dict = {bee_id:Bee(bee_id) for bee_id in list_bee_ids}
 
-        for i in range(0, len(list_bee_ids),100):
-            subset_bee_ids = list_bee_ids[i:i+100]
-            coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID', 'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'], where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=subset_bee_ids, order='ORDER BY Frame ASC')
+        db = DB()
+        for i in range(0, len(list_bee_ids),200):
+            subset_bee_ids = list_bee_ids[i:i+200]
+            query_statement = db.query_string(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID', 'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'], where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=subset_bee_ids, order='ORDER BY Frame ASC')
+            coord_rows = db.query(query_statement)
 
             for row in coord_rows:
                 bee_id = row['BeeID']
@@ -150,6 +156,7 @@ class Experiment:
                     bee_id_dict[bee_id].last_x = row['X']
                     bee_id_dict[bee_id].last_y = row['Y']
 
+        db.close()
         return bee_id_dict
 
     def generate_heatmaps(self, list_bee_ids, bee_id_dict, plot_title):
@@ -175,8 +182,8 @@ class Experiment:
             for x_c in range(0, normalised_individual_heatmap.shape[1]):
                 spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_individual_heatmap[y_c, x_c]
 
-        Graphics.plot_heatmaps(normalised_individual_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
-        Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
+        #Graphics.plot_heatmaps(normalised_individual_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'individual.png')
+        #Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.01, plot_title, '/Users/jack/Research/DBee/results/' + plot_title + 'xy.png')
 
         return spread
 
@@ -198,40 +205,6 @@ class Experiment:
 
 def main():
     pass
-    #query_db(table='bees', cols=['HourBin'], where='HiveID=1', group_condition='AND HiveID IN', group_list=[1,2,3])
-    #query_db(table='bees', cols=['HourBin'], where='HiveID=1')
-    #query_db(table='bees', cols=['HourBin'], group_condition='HiveID IN', group_list=[1,2,3])
-
-    #query_db(table='paths', cols=['*'], where='BeeID IN', subquery='select beeid from bees where beeid=0')
-
-    #query_db(table='paths', cols=['*'], where='BeeID IN', subquery='select beeid from bees where beeid IN', subquery_list=[0,1])
-
-    #SELECT ID, NAME, AGE, AMOUNT
-        #FROM CUSTOMERS, ORDERS
-        #WHERE  CUSTOMERS.ID = ORDERS.CUSTOMER_ID;
-
-    #select BeeID, paths.PathID, Frame, X, Y from bee_coords, paths WHERE bee_coords.PathID = paths.PathID AND PathID IN (select PathID from paths where BeeID=1);
-
-    #select paths.BeeID, bee_coords.PathID, bee_coords.Frame, bee_coords.X, bee_coords.Y from bee_coords, paths WHERE bee_coords.PathID = paths.PathID AND BeeID IN (0);
-
-    #select * from paths where beeid in (select beeid from bees where beeid=0);
-
-    #select * from paths where beeid in (select beeid from bees where beeid=0);
-
-    #beeid
-
-    #query_db(table, cols, distinct=False, fetchall=True, where='', join_operator='', group_condition='', group_list=[], subquery_where='', subquery_list=[]):
-
-    #coordinate_rows =query_db(table='bee_coords', cols=['PathID', 'Frame', 'X', 'Y'], where='PathID IN', subquery='SELECT PathID FROM paths WHERE BeeID IN', subquery_list=[0,1])
-
-    #print(x)
-
-    #select paths.BeeID, bee_coords.PathID, bee_coords.Frame, bee_coords.X, bee_coords.Y from bee_coords, paths WHERE bee_coords.PathID = paths.PathID AND BeeID IN (0);
-
-    #coord_rows = query_db(table='bee_coords, paths', cols=['paths.BeeID', 'bee_coords.PathID',
-                        #'bee_coords.Frame', 'bee_coords.X', 'bee_coords.Y'],
-                        #where='bee_coords.PathID = paths.PathID', group_condition='AND BeeID IN', group_list=list_bee_ids, order='ORDER BY Frame ASC')
-
 
 if __name__ == "__main__":
     main()

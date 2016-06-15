@@ -3,15 +3,15 @@
 import sys
 import datetime
 import random
+random.seed(1)
+import pandas as pd
 
 from beehaviour.experiment import Experiment
-from beehaviour.db_utils import parse_experiment_numbers
 
-from beehaviour.database import insert_db
-
-import time
-
-random.seed(1)
+def parse_experiment_numbers(experiment_numbers_str):
+    experiment_numbers_list_str = experiment_numbers_str.split(',')
+    experiment_numbers = [int(number) for number in experiment_numbers_list_str]
+    return experiment_numbers
 
 def main():
     all_hive_ids = parse_experiment_numbers(sys.argv[1])
@@ -27,8 +27,8 @@ def main():
 
         combined_day_night_bee_ids = experiment.merge_day_night_beeids(day_grouped_beeids, night_grouped_beeids)
 
-        output = {spread:[], speed:[], is_day:[], day_num:[], is_real_result:[]}
-        for i, day_night_period_bee_ids in enumerate(combined_day_night_bee_ids[:1]):
+        output = {'spread':[], 'speed':[], 'is_day':[], 'day_num':[], 'is_real_result':[]}
+        for i, day_night_period_bee_ids in enumerate(combined_day_night_bee_ids):
             print('Period', i)
 
             bee_id_dict = experiment.retrieve_process_bees(combined_day_night_bee_ids[i])

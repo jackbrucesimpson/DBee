@@ -3,14 +3,17 @@
 import os
 import datetime
 
-from .database import insert_db, query_db
+from beehaviour import DB
 from .experiment import Experiment
 
 CAMERA_FRAMES_PER_SEC = 25
 FRAMES_IN_AN_HOUR = CAMERA_FRAMES_PER_SEC * 60 * 60
 
 def get_next_bee_id():
-    query_result = query_db(table='bees', cols=['MAX(BeeID)'], fetchall=False)
+    db = DB()
+    query_statement = db.query_string(table='bees', cols=['MAX(BeeID)'], fetchall=False)
+    query_result = db.query(query_statement)
+    db.close()
 
     if query_result['MAX(BeeID)'] is None:
         return(0)
@@ -18,7 +21,10 @@ def get_next_bee_id():
         return query_result['MAX(BeeID)'] + 1
 
 def get_next_path_id():
-    query_result = query_db(table='paths', cols=['MAX(PathID)'], fetchall=False)
+    db = DB()
+    query_statement = db.query_string(table='paths', cols=['MAX(PathID)'], fetchall=False)
+    query_result = db.query(query_statement)
+    db.close()
 
     if query_result['MAX(PathID)'] is None:
         return(0)
@@ -192,8 +198,20 @@ def insert_paths_coords(df, path_id, bee_id):
             bee_coords_db_values.append([path_id, all_frame_num_paths[i][j], all_x_paths[i][j], all_y_paths[i][j]])
         path_id += 1
 
-    insert_db(table='paths', cols=['PathID', 'BeeID', 'StartPathFrame', 'EndPathFrame'], values=paths_db_values)
-    insert_db(table='bee_coords', cols=['PathID', 'Frame', 'X', 'Y'], values=bee_coords_db_values)
+
+    db = DB()
+    insert_statement = db.insert_string(table='paths', cols=['PathID', 'BeeID', 'StartPathFrame', 'EndPathFrame'], values=paths_db_values)
+    db.modify(insert_statement)
+    db.commit()
+
+    # have to break up row inserts into chunks because otherwise db connection fails
+    for i in range(0, len(bee_coords_db_values), 50000):
+        subset_values = bee_coords_db_values[i:i+50000]
+        insert_statement = db.insert_string(table='bee_coords', cols=['PathID', 'Frame', 'X', 'Y'], values=subset_values)
+        db.modify(insert_statement)
+        db.commit()
+
+    db.close()
 
     return path_id
 

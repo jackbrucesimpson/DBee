@@ -17,6 +17,13 @@ class Graphics:
         plt.clf()
         plt.close()
 
+    @staticmethod
+    def plot_day_night_spread(data, title, filename):
+        pass
+
+    @staticmethod
+    def plot_day_night_speed(real_day_speed_means, real_night_speed_means, title, filename):
+        pass
 
 def main():
     pass

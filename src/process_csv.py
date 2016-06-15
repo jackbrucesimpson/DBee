@@ -4,7 +4,7 @@ import sys
 import os
 import pandas as pd
 
-from beehaviour.database import insert_db
+from beehaviour import DB
 from beehaviour.csv_utils import get_next_bee_id, get_next_path_id, list_all_files, process_video_metadata, current_meta, create_hour_bins_in_video, insert_paths_coords
 
 def main():
@@ -16,6 +16,11 @@ def main():
     MIN_TIME_TRACKED = 25 * 5
     NEXT_MAX_BEE_ID = get_next_bee_id()
     NEXT_MAX_PATH_ID = get_next_path_id()
+
+    db = DB()
+    insert_statement = db.insert_string(table='experiment_meta', cols=['ExperimentNum', 'HiveType', 'HiveID'], values=[[EXPERIMENT_NUMBER, HIVE_TYPE, HIVE_ID]])
+    db.modify(insert_statement)
+    db.commit_close()
 
     insert_db(table='experiment_meta', cols=['ExperimentNum', 'HiveType', 'HiveID'], values=[[EXPERIMENT_NUMBER, HIVE_TYPE, HIVE_ID]])
 
@@ -54,7 +59,10 @@ def main():
                     tag_identity = 0
                     tag_percentage = 0
 
-                insert_db(table='bees', cols=['BeeID','TagID','TagConfidence','NumTagClassified','LengthTracked','HiveID','HourBin'], values=[[NEXT_MAX_BEE_ID, tag_identity, tag_percentage, num_tags_classified, length_bee_tracked, HIVE_ID, hour_bins_video[i]]])
+                db = DB()
+                insert_statement = db.insert_string(table='bees', cols=['BeeID','TagID','TagConfidence','NumTagClassified','LengthTracked','HiveID','HourBin'], values=[[NEXT_MAX_BEE_ID, tag_identity, tag_percentage, num_tags_classified, length_bee_tracked, HIVE_ID, hour_bins_video[i]]])
+                db.modify(insert_statement)
+                db.commit_close()
 
                 NEXT_MAX_PATH_ID = insert_paths_coords(bee_df, NEXT_MAX_PATH_ID, NEXT_MAX_BEE_ID)
                 NEXT_MAX_BEE_ID += 1
