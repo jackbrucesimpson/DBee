@@ -11,8 +11,8 @@ FRAMES_IN_AN_HOUR = CAMERA_FRAMES_PER_SEC * 60 * 60
 
 def get_next_bee_id():
     db = DB()
-    query_statement = db.query_string(table='bees', cols=['MAX(BeeID)'], fetchall=False)
-    query_result = db.query(query_statement)
+    query_statement = db.query_string(table='bees', cols=['MAX(BeeID)'])
+    query_result = db.query(query_statement, fetchall=False)
     db.close()
 
     if query_result['MAX(BeeID)'] is None:
@@ -22,8 +22,8 @@ def get_next_bee_id():
 
 def get_next_path_id():
     db = DB()
-    query_statement = db.query_string(table='paths', cols=['MAX(PathID)'], fetchall=False)
-    query_result = db.query(query_statement)
+    query_statement = db.query_string(table='paths', cols=['MAX(PathID)'])
+    query_result = db.query(query_statement, fetchall=False)
     db.close()
 
     if query_result['MAX(PathID)'] is None:

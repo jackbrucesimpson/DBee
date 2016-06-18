@@ -22,8 +22,6 @@ def main():
     db.modify(insert_statement)
     db.commit_close()
 
-    insert_db(table='experiment_meta', cols=['ExperimentNum', 'HiveType', 'HiveID'], values=[[EXPERIMENT_NUMBER, HIVE_TYPE, HIVE_ID]])
-
     ordered_csv_files = list_all_files(CSV_DIRECTORY)
     list_all_videos_metadata = process_video_metadata(CSV_DIRECTORY + METADATA_FILE)
 
