@@ -18,9 +18,13 @@ def parse_experiment_numbers(experiment_numbers_str):
 
 def main():
     all_hive_ids = parse_experiment_numbers(sys.argv[1])
+    if len(sys.argv) == 3:
+        tag_type = int(sys.argv[2])
+    else:
+        tag_type = None
 
     for hive_id in all_hive_ids:
-        experiment = Experiment(hive_id)
+        experiment = Experiment(hive_id, tag_type=tag_type)
 
         for day_num, day_grouped_beeids in enumerate(experiment.day_grouped_beeids):
             experiment.calculate_day_night_metrics(day_num)

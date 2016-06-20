@@ -11,12 +11,12 @@ from .graphics import Graphics
 from .bee import Bee
 
 class Experiment:
-    def __init__(self, hive_id):
+    def __init__(self, hive_id, tag_type=None):
         self.hive_id = hive_id
         self.output_dir = '/Users/jack/Research/DBee/results/'
 
         # Treatment (circle 1), Control (rectangle 2), queen: (blank 3)
-        self.tag_type_beeids = {1:[],2:[],3:[]}
+        self.tag_type = tag_type
 
         self.treatment_circ1_beeids = []
         self.control_rect2_beeids = []
@@ -27,7 +27,8 @@ class Experiment:
         self.x_bins = 3840/self.num_x_cells
         self.y_bins = 2160/self.num_y_cells
         self.frames_per_window = 25
-        self.min_angle_speed = 40
+        self.min_angle_speed = 60
+        self.tag_confidence_percentage = 0.8
 
         # time_period = 'day', 'night'
         # result_type = 'real', 'shuffled', 'bootstrapped'
@@ -106,10 +107,11 @@ class Experiment:
             beeids_in_time_group = []
             query_statement = db.query_string(table='bees', cols=['BeeID', 'TagID', 'TagConfidence'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
             hours_query_result = db.query(query_statement)
-            for bee_row in hours_query_result:#[:100]:
-                beeids_in_time_group.append(bee_row['BeeID'])
-                if bee_row['TagConfidence'] > 0.8:
-                    self.tag_type_beeids[bee_row['TagID']].append(bee_row['BeeID'])
+            for bee_row in hours_query_result[:100]:
+                if self.tag_type is None:
+                    beeids_in_time_group.append(bee_row['BeeID'])
+                elif self.tag_type == bee_row['TagID'] and bee_row['TagConfidence'] > self.tag_confidence_percentage:
+                    beeids_in_time_group.append(bee_row['BeeID'])
 
             group_beeids.append(beeids_in_time_group)
 
@@ -140,15 +142,15 @@ class Experiment:
         self.output['speed_diff_mean'].extend([abs(mean_day_speed - mean_night_speed),np.nan])
         self.output['speed_diff_median'].extend([abs(median_day_speed - median_night_speed),np.nan])
 
-        self.permutation_tests(day_beeids, night_beeids, combined_day_night_beeids, day_num, num_iterations)
+        self.permutation_tests(day_beeids, night_beeids, combined_day_night_beeids, bee_id_dict, day_num, 1000)
 
-    def permutation_tests(self, day_beeids, night_beeids, combined_day_night_beeids, day_num, num_iterations):
+    def permutation_tests(self, day_beeids, night_beeids, combined_day_night_beeids, bee_id_dict, day_num, num_iterations):
         for i in range(num_iterations):
             shuffled_day_beeids = np.random.choice(combined_day_night_beeids, len(day_beeids), replace=True)
             shuffled_night_beeids = np.random.choice(combined_day_night_beeids, len(night_beeids), replace=True)
 
-            day_spread = self.generate_heatmaps(shuffled_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num))
-            night_spread = self.generate_heatmaps(shuffled_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num))
+            day_spread = self.generate_heatmaps(shuffled_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
+            night_spread = self.generate_heatmaps(shuffled_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
             mean_day_speed, median_day_speed = self.generate_speeds(shuffled_day_beeids, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             mean_night_speed, median_night_speed = self.generate_speeds(shuffled_night_beeids, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
@@ -165,8 +167,8 @@ class Experiment:
             bootstrapped_day_beeids = np.random.choice(day_beeids, len(day_beeids), replace=True)
             bootstrapped_night_beeids = np.random.choice(night_beeids, len(night_beeids), replace=True)
 
-            day_spread = self.generate_heatmaps(bootstrapped_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num))
-            night_spread = self.generate_heatmaps(bootstrapped_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num))
+            day_spread = self.generate_heatmaps(bootstrapped_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
+            night_spread = self.generate_heatmaps(bootstrapped_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
             mean_day_speed, median_day_speed = self.generate_speeds(bootstrapped_day_beeids, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             mean_night_speed, median_night_speed = self.generate_speeds(bootstrapped_night_beeids, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
@@ -175,7 +177,7 @@ class Experiment:
             self.output['speed_median'].extend([median_night_speed, median_day_speed])
             self.output['time_period'].extend(['night', 'day'])
             self.output['day_num'].extend([day_num, day_num])
-            self.output['result_type'].extend(['shuffled', 'shuffled'])
+            self.output['result_type'].extend(['bootstrapped', 'bootstrapped'])
             self.output['spread_diff'].extend([abs(day_spread - night_spread),np.nan])
             self.output['speed_diff_mean'].extend([abs(mean_day_speed - mean_night_speed),np.nan])
             self.output['speed_diff_median'].extend([abs(median_day_speed - median_night_speed),np.nan])
