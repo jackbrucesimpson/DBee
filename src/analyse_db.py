@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import datetime
@@ -8,7 +8,6 @@ import pandas as pd
 
 from beehaviour.experiment import Experiment
 
-random.seed(1)
 np.random.seed(1)
 
 def parse_experiment_numbers(experiment_numbers_str):
@@ -18,15 +17,11 @@ def parse_experiment_numbers(experiment_numbers_str):
 
 def main():
     all_hive_ids = parse_experiment_numbers(sys.argv[1])
-    if len(sys.argv) == 3:
-        tag_type = int(sys.argv[2])
-    else:
-        tag_type = None
 
     for hive_id in all_hive_ids:
-        experiment = Experiment(hive_id, tag_type=tag_type)
+        experiment = Experiment(hive_id)
 
-        for day_num, day_grouped_beeids in enumerate(experiment.day_grouped_beeids):
+        for day_num, day_grouped_bees in enumerate(experiment.day_grouped_bees):
             experiment.calculate_day_night_metrics(day_num)
 
         output_df = pd.DataFrame(experiment.output)

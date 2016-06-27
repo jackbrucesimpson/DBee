@@ -4,6 +4,7 @@ import datetime
 import random
 import numpy as np
 import math
+import copy
 from scipy import ndimage
 
 from .db import DB
@@ -11,16 +12,9 @@ from .graphics import Graphics
 from .bee import Bee
 
 class Experiment:
-    def __init__(self, hive_id, tag_type=None):
+    def __init__(self, hive_id):
         self.hive_id = hive_id
         self.output_dir = '/Users/jack/Research/DBee/results/'
-
-        # Treatment (circle 1), Control (rectangle 2), queen: (blank 3)
-        self.tag_type = tag_type
-
-        self.treatment_circ1_beeids = []
-        self.control_rect2_beeids = []
-        self.queen_blank3_beeids = []
 
         self.num_x_cells = 40
         self.num_y_cells = 20
@@ -29,16 +23,40 @@ class Experiment:
         self.frames_per_window = 25
         self.min_angle_speed = 60
         self.tag_confidence_percentage = 0.8
+        self.min_tracked_for_classification = 100
+        self.min_time_tracked = 25 * 5
 
         # time_period = 'day', 'night'
         # result_type = 'real', 'shuffled', 'bootstrapped'
-        self.output = {'spread':[], 'speed_mean':[], 'speed_median':[], 'time_period':[], 'day_num':[], 'result_type':[], 'spread_diff':[], 'speed_diff_mean':[], 'speed_diff_median':[]}
+        # tag_type = 0: unclassified, 1: circle treatment, 2: rectangle control, 3: blank queen, 'All': All tags
+        self.output = {'spread_all_tracked_individuals': [],
+                        'spread_all_tracked_all_xy': [],
+                        'spread_min_tracked_individuals': [],
+                        'spread_min_tracked_all_xy': [],
+                        'diff_spread_all_tracked_individuals': [],
+                        'diff_spread_all_tracked_all_xy': [],
+                        'diff_spread_min_tracked_individuals': [],
+                        'diff_spread_min_tracked_all_xy': [],
+                        'mean_all_tracked_speeds': [],
+                        'mean_min_tracked_speeds': [],
+                        'median_all_tracked_speeds': [],
+                        'median_min_tracked_speeds': [],
+                        'diff_mean_all_tracked_speeds': [],
+                        'diff_mean_min_tracked_speeds': [],
+                        'diff_median_all_tracked_speeds': [],
+                        'diff_median_min_tracked_speeds': [],
+                        'day_num': [],
+                        'time_period': [],
+                        'result_type': [],
+                        'tag_type': []}
 
         hour_blocks_in_experiment = self.retrieve_hour_blocks_in_experiment(hive_id)
+        #print(hive_id)
+        #print(hour_blocks_in_experiment)
         day_hour_bins, night_hour_bins = self.group_hours_by_night_day(hour_blocks_in_experiment)
 
-        self.day_grouped_beeids = self.retrieve_beeids_in_time_period(day_hour_bins)
-        self.night_grouped_beeids = self.retrieve_beeids_in_time_period(night_hour_bins)
+        self.day_grouped_bees = self.retrieve_bees_in_time_period(day_hour_bins)
+        self.night_grouped_bees = self.retrieve_bees_in_time_period(night_hour_bins)
 
     @staticmethod
     def calc_distance(x1, y1, x2, y2):
@@ -76,8 +94,11 @@ class Experiment:
         day_hours = []
         current_hours_group = []
 
+        #print(sorted_date_times)
+
         for each_date_time in sorted_date_times:
             each_hour = each_date_time.time().hour
+            #print(each_hour)
             if each_hour in [0, 1, 2, 3, 4, 5, 6, 19, 20, 21, 22, 23]:
                 if is_day == True:
                     day_hours.append(current_hours_group)
@@ -98,92 +119,90 @@ class Experiment:
         else:
             night_hours.append(current_hours_group)
 
+        #print(night_hours)
         return (day_hours, night_hours)
 
-    def retrieve_beeids_in_time_period(self, time_period_list_datetimes):
-        group_beeids = []
+    def retrieve_bees_in_time_period(self, time_period_list_datetimes):
+        group_bees = []
         db = DB()
+        #print(time_period_list_datetimes)
         for each_group_hours in time_period_list_datetimes:
-            beeids_in_time_group = []
-            query_statement = db.query_string(table='bees', cols=['BeeID', 'TagID', 'TagConfidence'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
+            #print(each_group_hours)
+            bees_in_time_group = []
+            query_statement = db.query_string(table='bees', cols=['BeeID', 'TagID', 'TagConfidence', 'LengthTracked'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
+            #print(query_statement)
             hours_query_result = db.query(query_statement)
-            for bee_row in hours_query_result[:100]:
-                if self.tag_type is None:
-                    beeids_in_time_group.append(bee_row['BeeID'])
-                elif self.tag_type == bee_row['TagID'] and bee_row['TagConfidence'] > self.tag_confidence_percentage:
-                    beeids_in_time_group.append(bee_row['BeeID'])
+            for bee_row in hours_query_result:#[:100]: ##### change
+                #print()
+                if bee_row['TagConfidence'] > self.tag_confidence_percentage and bee_row['LengthTracked'] > self.min_tracked_for_classification:
+                    bee = Bee(bee_row['BeeID'], bee_row['TagID'], bee_row['LengthTracked'])
+                    bees_in_time_group.append(bee)
+                else:
+                    bee = Bee(bee_row['BeeID'], 0, bee_row['LengthTracked'])
+                    bees_in_time_group.append(bee)
 
-            group_beeids.append(beeids_in_time_group)
+            group_bees.append(bees_in_time_group)
 
         db.close()
-        return group_beeids
-
-        return (shuffled_day_beeids, shuffled_night_beeids)
+        return group_bees
 
     def calculate_day_night_metrics(self, day_num):
         print('Period', day_num)
-        day_beeids = self.day_grouped_beeids[day_num]
-        night_beeids = self.night_grouped_beeids[day_num]
-        combined_day_night_beeids = day_beeids + night_beeids
-        bee_id_dict = self.retrieve_process_bees(combined_day_night_beeids)
+        day_bees = self.day_grouped_bees[day_num]
+        night_bees = self.night_grouped_bees[day_num]
+        combined_day_night_bees = day_bees + night_bees
+        bee_id_dict = self.retrieve_process_bees(combined_day_night_bees)
 
-        day_spread = self.generate_heatmaps(day_beeids, bee_id_dict, 'day_{}'.format(day_num))
-        night_spread = self.generate_heatmaps(night_beeids, bee_id_dict, 'night_{}'.format(day_num))
-        mean_day_speed, median_day_speed = self.generate_speeds(day_beeids, bee_id_dict, 'day_{}'.format(day_num))
-        mean_night_speed, median_night_speed = self.generate_speeds(night_beeids, bee_id_dict, 'night_{}'.format(day_num))
+        day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(day_bees, bee_id_dict, 'day_{}'.format(day_num))
+        night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
-        self.output['spread'].extend([night_spread, day_spread])
-        self.output['speed_mean'].extend([mean_night_speed, mean_day_speed])
-        self.output['speed_median'].extend([median_night_speed, median_day_speed])
-        self.output['time_period'].extend(['night', 'day'])
-        self.output['day_num'].extend([day_num, day_num])
-        self.output['result_type'].extend(['real', 'real'])
-        self.output['spread_diff'].extend([abs(day_spread - night_spread),np.nan])
-        self.output['speed_diff_mean'].extend([abs(mean_day_speed - mean_night_speed),np.nan])
-        self.output['speed_diff_median'].extend([abs(median_day_speed - median_night_speed),np.nan])
+        day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(day_bees, bee_id_dict, 'day_{}'.format(day_num))
+        night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
-        self.permutation_tests(day_beeids, night_beeids, combined_day_night_beeids, bee_id_dict, day_num, 1000)
+        #self.generate_angles(day_beeids, bee_id_dict, 'day_{}'.format(day_num))
+        #self.generate_angles(night_beeids, bee_id_dict, 'night_{}'.format(day_num))
 
-    def permutation_tests(self, day_beeids, night_beeids, combined_day_night_beeids, bee_id_dict, day_num, num_iterations):
+        self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+                        night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
+                        day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
+                        night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                        day_num, 'real')
+
+        self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
+
+    def permutation_tests(self, day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, num_iterations):
         for i in range(num_iterations):
-            shuffled_day_beeids = np.random.choice(combined_day_night_beeids, len(day_beeids), replace=True)
-            shuffled_night_beeids = np.random.choice(combined_day_night_beeids, len(night_beeids), replace=True)
+            shuffled_day_bees = np.random.choice(combined_day_night_bees, len(day_bees), replace=True)
+            shuffled_night_bees = np.random.choice(combined_day_night_bees, len(night_bees), replace=True)
 
-            day_spread = self.generate_heatmaps(shuffled_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
-            night_spread = self.generate_heatmaps(shuffled_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
-            mean_day_speed, median_day_speed = self.generate_speeds(shuffled_day_beeids, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
-            mean_night_speed, median_night_speed = self.generate_speeds(shuffled_night_beeids, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
+            day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(shuffled_day_bees, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
+            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(shuffled_night_bees, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
+            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(shuffled_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
+            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(shuffled_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
-            self.output['spread'].extend([night_spread, day_spread])
-            self.output['speed_mean'].extend([mean_night_speed, mean_day_speed])
-            self.output['speed_median'].extend([median_night_speed, median_day_speed])
-            self.output['time_period'].extend(['night', 'day'])
-            self.output['day_num'].extend([day_num, day_num])
-            self.output['result_type'].extend(['shuffled', 'shuffled'])
-            self.output['spread_diff'].extend([abs(day_spread - night_spread),np.nan])
-            self.output['speed_diff_mean'].extend([abs(mean_day_speed - mean_night_speed),np.nan])
-            self.output['speed_diff_median'].extend([abs(median_day_speed - median_night_speed),np.nan])
+            self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+                            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
+                            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
+                            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                            day_num, 'shuffled')
 
-            bootstrapped_day_beeids = np.random.choice(day_beeids, len(day_beeids), replace=True)
-            bootstrapped_night_beeids = np.random.choice(night_beeids, len(night_beeids), replace=True)
+            bootstrapped_day_bees = np.random.choice(day_bees, len(day_bees), replace=True)
+            bootstrapped_night_bees = np.random.choice(night_bees, len(night_bees), replace=True)
 
-            day_spread = self.generate_heatmaps(bootstrapped_day_beeids, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
-            night_spread = self.generate_heatmaps(bootstrapped_night_beeids, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
-            mean_day_speed, median_day_speed = self.generate_speeds(bootstrapped_day_beeids, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
-            mean_night_speed, median_night_speed = self.generate_speeds(bootstrapped_night_beeids, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
+            day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_day_bees, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
+            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_night_bees, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
+            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(bootstrapped_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
+            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(bootstrapped_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
-            self.output['spread'].extend([night_spread, day_spread])
-            self.output['speed_mean'].extend([mean_night_speed, mean_day_speed])
-            self.output['speed_median'].extend([median_night_speed, median_day_speed])
-            self.output['time_period'].extend(['night', 'day'])
-            self.output['day_num'].extend([day_num, day_num])
-            self.output['result_type'].extend(['bootstrapped', 'bootstrapped'])
-            self.output['spread_diff'].extend([abs(day_spread - night_spread),np.nan])
-            self.output['speed_diff_mean'].extend([abs(mean_day_speed - mean_night_speed),np.nan])
-            self.output['speed_diff_median'].extend([abs(median_day_speed - median_night_speed),np.nan])
+            self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+                            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
+                            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
+                            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                            day_num, 'bootstrapped')
 
-    def retrieve_process_bees(self, list_bee_ids):
-        bee_id_dict = {bee_id:Bee(bee_id) for bee_id in list_bee_ids}
+    def retrieve_process_bees(self, list_bees):
+        bee_id_dict = {bee.bee_id: bee for bee in list_bees}
+        list_bee_ids = list(bee_id_dict.keys())
 
         db = DB()
         for i in range(0, len(list_bee_ids),200):
@@ -226,52 +245,126 @@ class Experiment:
         db.close()
         return bee_id_dict
 
-    def generate_heatmaps(self, list_bee_ids, bee_id_dict, plot_title):
-        individual_heatmap = np.zeros((self.num_y_cells, self.num_x_cells))
-        all_xy_heatmap = np.zeros((self.num_y_cells, self.num_x_cells))
+    def generate_heatmaps(self, list_bees, bee_id_dict, plot_title):
+        all_tracked_individuals_heatmaps = {0: np.zeros((self.num_y_cells, self.num_x_cells)),
+                                            1: np.zeros((self.num_y_cells, self.num_x_cells)),
+                                            2: np.zeros((self.num_y_cells, self.num_x_cells)),
+                                            3: np.zeros((self.num_y_cells, self.num_x_cells)),
+                                            'All': np.zeros((self.num_y_cells, self.num_x_cells))}
+        all_tracked_all_xy_points_heatmaps = copy.deepcopy(all_tracked_individuals_heatmaps)
+        min_tracked_individuals_heatmaps = copy.deepcopy(all_tracked_individuals_heatmaps)
+        min_tracked_all_xy_points_heatmaps = copy.deepcopy(all_tracked_individuals_heatmaps)
 
-        for bee_id in list_bee_ids:
+        for each_bee in list_bees:
+            bee_id = each_bee.bee_id
             bee = bee_id_dict[bee_id]
             for yx_coord in bee.cells_visited:
                 y, x = yx_coord
-                all_xy_heatmap[y, x] += bee.cells_visited[yx_coord]
-                individual_heatmap[y, x] += 1
+                all_tracked_individuals_heatmaps[bee.tag_id] += 1
+                all_tracked_individuals_heatmaps['All'] += 1
+                all_tracked_all_xy_points_heatmaps[bee.tag_id] += bee.cells_visited[yx_coord]
+                all_tracked_all_xy_points_heatmaps['All'] += bee.cells_visited[yx_coord]
 
-        if individual_heatmap.sum() == 0:
-            return None
+                if bee.path_length > self.min_time_tracked:
+                    min_tracked_individuals_heatmaps[bee.tag_id] += 1
+                    min_tracked_individuals_heatmaps['All'] += 1
+                    min_tracked_all_xy_points_heatmaps[bee.tag_id] += bee.cells_visited[yx_coord]
+                    min_tracked_all_xy_points_heatmaps['All'] += bee.cells_visited[yx_coord]
 
-        normalised_individual_heatmap = individual_heatmap / individual_heatmap.sum()
-        normalised_all_xy_heatmap = all_xy_heatmap / all_xy_heatmap.sum()
+        spread_heatmap_dicts  = [{},{},{},{}]
+        for i, heatmap_tag_dict in enumerate([all_tracked_individuals_heatmaps, all_tracked_all_xy_points_heatmaps, min_tracked_individuals_heatmaps, min_tracked_all_xy_points_heatmaps]):
+            for tag_group in heatmap_tag_dict:
+                norm_heatmap = heatmap_tag_dict[tag_group] / heatmap_tag_dict[tag_group].sum()
+                centre = ndimage.measurements.center_of_mass(norm_heatmap)
+                spread = 0
+                for y_c in range(0, norm_heatmap.shape[0]):
+                    for x_c in range(0, norm_heatmap.shape[1]):
+                        spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * norm_heatmap[y_c, x_c]
 
-        centre = ndimage.measurements.center_of_mass(normalised_individual_heatmap)
-        spread = 0
-        for y_c in range(0, normalised_individual_heatmap.shape[0]):
-            for x_c in range(0, normalised_individual_heatmap.shape[1]):
-                spread += Experiment.calc_distance(x_c, y_c, centre[1], centre[0]) * normalised_individual_heatmap[y_c, x_c]
+                spread_heatmap_dicts[i][tag_group] = spread
 
-        #Graphics.plot_heatmaps(normalised_individual_heatmap, 0.01, plot_title, '{}id{}_{}_hm_individual.png'.format(self.output_dir, self.hive_id, plot_title))
-        #Graphics.plot_heatmaps(normalised_all_xy_heatmap, 0.01, plot_title, '{}id{}_{}_hm_xy.png'.format(self.output_dir, self.hive_id, plot_title))
+        return spread_heatmap_dicts
 
-        return spread
+    def generate_speeds(self, list_bees, bee_id_dict, plot_title):
+        all_tracked_speeds = {0: [],
+                                1: [],
+                                2: [],
+                                3: [],
+                                'All': []}
+        min_tracked_speeds = copy.deepcopy(all_tracked_speeds)
 
-    def generate_speeds(self, list_bee_ids, bee_id_dict, plot_title):
-        all_speeds = []
-        for bee_id in list_bee_ids:
+        for each_bee in list_bees:
+            bee_id = each_bee.bee_id
             bee = bee_id_dict[bee_id]
-            all_speeds.extend(bee.list_speeds)
+            all_tracked_speeds[bee.tag_id].extend(bee.list_speeds)
+            all_tracked_speeds['All'].extend(bee.list_speeds)
 
-        if 'shuffled' not in plot_title:
-            Graphics.create_histogram(all_speeds, plot_title, '{}id{}_{}_speeds_hist.png'.format(self.output_dir, self.hive_id, plot_title))
-        return (np.mean(all_speeds), np.median(all_speeds))
+            if bee.path_length > self.min_time_tracked:
+                min_tracked_speeds[bee.tag_id].extend(bee.list_speeds)
+                min_tracked_speeds['All'].extend(bee.list_speeds)
 
-    def generate_angles(self, list_bee_ids, bee_id_dict, plot_title):
-        angles_of_bees = np.zeros(360 / 20)
-        for bee_id in list_bee_ids:
+        mean_all_tracked_speeds, mean_min_tracked_speeds, median_all_tracked_speeds, median_min_tracked_speeds = ({}, {}, {}, {})
+        for tag_id in all_tracked_speeds:
+            mean_all_tracked_speeds[tag_id] = np.mean(all_tracked_speeds[tag_id])
+            mean_min_tracked_speeds[tag_id] = np.mean(min_tracked_speeds[tag_id])
+            median_all_tracked_speeds[tag_id] = np.median(all_tracked_speeds[tag_id])
+            median_min_tracked_speeds[tag_id] = np.median(min_tracked_speeds[tag_id])
+
+        return [mean_all_tracked_speeds, mean_min_tracked_speeds, median_all_tracked_speeds, median_min_tracked_speeds]
+
+    def generate_angles(self, list_bees, bee_id_dict, plot_title):
+        all_tracked_angles = {0: np.zeros(360 / 20),
+                                1: np.zeros(360 / 20),
+                                2: np.zeros(360 / 20),
+                                3: np.zeros(360 / 20),
+                                'All': np.zeros(360 / 20)}
+        min_tracked_angles = copy.deepcopy(all_tracked_speeds)
+
+        for each_bee in list_bees:
+            bee_id = each_bee.bee_id
             bee = bee_id_dict[bee_id]
             if len(bee.list_angles) > 0:
-                angles_of_bees += Graphics.create_angles_hist(bee.list_angles)
+                angles_hist = Graphics.create_angles_hist(bee.list_angles)
+                all_tracked_angles[bee.tag_id] += angles_hist
+                all_tracked_angles['All'] += angles_hist
+                if bee.path_length > self.min_time_tracked:
+                    min_tracked_angles[bee.tag_id] += angles_hist
+                    min_tracked_angles['All'] += angles_hist
 
-        Graphics.draw_circular_hist(angles_of_bees, plot_title, '{}id_{}_{}_angles.png'.format(self.output_dir, self.hive_id, plot_title))
+        return None
+
+    def log_output(self, day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+                    night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
+                    day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
+                    night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                    day_num, result_type):
+
+        for tag_type in day_spread_all_tracked_individuals:
+
+            self.output['spread_all_tracked_individuals'].extend([night_spread_all_tracked_individuals[tag_type], day_spread_all_tracked_individuals[tag_type]])
+            self.output['spread_all_tracked_all_xy'].extend([night_spread_all_tracked_all_xy[tag_type], day_spread_all_tracked_all_xy[tag_type]])
+            self.output['spread_min_tracked_individuals'].extend([night_spread_min_tracked_individuals[tag_type], day_spread_min_tracked_individuals[tag_type]])
+            self.output['spread_min_tracked_all_xy'].extend([night_spread_min_tracked_all_xy[tag_type], day_spread_min_tracked_all_xy[tag_type]])
+
+            self.output['diff_spread_all_tracked_individuals'].extend([abs(day_spread_all_tracked_individuals[tag_type] - night_spread_all_tracked_individuals[tag_type]), np.nan])
+            self.output['diff_spread_all_tracked_all_xy'].extend([abs(day_spread_all_tracked_all_xy[tag_type] - night_spread_all_tracked_all_xy[tag_type]), np.nan])
+            self.output['diff_spread_min_tracked_individuals'].extend([abs(day_spread_min_tracked_individuals[tag_type] - night_spread_min_tracked_individuals[tag_type]), np.nan])
+            self.output['diff_spread_min_tracked_all_xy'].extend([abs(day_spread_min_tracked_all_xy[tag_type] - night_spread_min_tracked_all_xy[tag_type]), np.nan])
+
+            self.output['mean_all_tracked_speeds'].extend([night_mean_all_tracked_speeds[tag_type], day_mean_all_tracked_speeds[tag_type]])
+            self.output['mean_min_tracked_speeds'].extend([night_mean_min_tracked_speeds[tag_type], day_mean_min_tracked_speeds[tag_type]])
+            self.output['median_all_tracked_speeds'].extend([night_median_all_tracked_speeds[tag_type], day_median_all_tracked_speeds[tag_type]])
+            self.output['median_min_tracked_speeds'].extend([night_median_min_tracked_speeds[tag_type], day_median_min_tracked_speeds[tag_type]])
+
+            self.output['diff_mean_all_tracked_speeds'].extend([abs(day_mean_all_tracked_speeds[tag_type] - night_mean_all_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_mean_min_tracked_speeds'].extend([abs(day_mean_min_tracked_speeds[tag_type] - night_mean_min_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_median_all_tracked_speeds'].extend([abs(day_median_all_tracked_speeds[tag_type] - night_median_all_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_median_min_tracked_speeds'].extend([abs(day_median_min_tracked_speeds[tag_type] - night_median_min_tracked_speeds[tag_type]), np.nan])
+
+            self.output['day_num'].extend([day_num, day_num])
+            self.output['time_period'].extend(['night', 'day'])
+            self.output['result_type'].extend([result_type, result_type])
+            self.output['tag_type'].extend([tag_type, tag_type])
 
         return None
 
