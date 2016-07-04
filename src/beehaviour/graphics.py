@@ -9,7 +9,8 @@ class Graphics:
     @staticmethod
     def plot_heatmaps(heatmap, vmax, title, filename):
         plt.figure()
-        plt.imshow(heatmap, interpolation="nearest", vmin=0, vmax=vmax)
+        #plt.imshow(heatmap, interpolation="nearest", vmin=0, vmax=vmax)
+        plt.imshow(heatmap, interpolation="nearest")
         plt.xlabel("Bottom of frame")
         plt.ylabel("Left side of frame")
         plt.colorbar()

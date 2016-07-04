@@ -27,6 +27,8 @@ class Experiment:
         self.min_tracked_for_classification = 100
         self.min_time_tracked = 25 * 5
 
+        self.plotnum = 0
+
         self.logger = LogData()
 
         hour_blocks_in_experiment = self.retrieve_hour_blocks_in_experiment(hive_id)
@@ -104,14 +106,14 @@ class Experiment:
         db = DB()
         #print(time_period_list_datetimes)
         for each_group_hours in time_period_list_datetimes:
-            #print(each_group_hours)
+            #print(each_group_hours, '\n')
             bees_in_time_group = []
             query_statement = db.query_string(table='bees', cols=['BeeID', 'TagID', 'TagConfidence', 'LengthTracked'], group_condition='HourBin IN', group_list=[str(time) for time in each_group_hours])
             #print(query_statement)
             hours_query_result = db.query(query_statement)
             for bee_row in hours_query_result:#[:100]: ##### change
                 #print()
-                if bee_row['TagConfidence'] > self.tag_confidence_percentage and bee_row['LengthTracked'] > self.min_tracked_for_classification:
+                if bee_row['TagConfidence'] > self.tag_confidence_percentage:
                     bee = Bee(bee_row['BeeID'], bee_row['TagID'], bee_row['LengthTracked'])
                     bees_in_time_group.append(bee)
                 else:
@@ -133,6 +135,8 @@ class Experiment:
         day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(day_bees, bee_id_dict, 'day_{}'.format(day_num))
         night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
+        #print(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy, '\n')
+
         day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(day_bees, bee_id_dict, 'day_{}'.format(day_num))
         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
@@ -145,7 +149,7 @@ class Experiment:
                         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
                         day_num, 'real')
 
-        self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
+        #self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
 
     def permutation_tests(self, day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, num_iterations):
         for i in range(num_iterations):
@@ -232,26 +236,32 @@ class Experiment:
         min_tracked_individuals_heatmaps = copy.deepcopy(all_tracked_individuals_heatmaps)
         min_tracked_all_xy_points_heatmaps = copy.deepcopy(all_tracked_individuals_heatmaps)
 
+        #print([bee.bee_id for bee in list_bees], '\n')
+
         for each_bee in list_bees:
             bee_id = each_bee.bee_id
             bee = bee_id_dict[bee_id]
             for yx_coord in bee.cells_visited:
                 y, x = yx_coord
-                all_tracked_individuals_heatmaps[bee.tag_id] += 1
-                all_tracked_individuals_heatmaps['All'] += 1
-                all_tracked_all_xy_points_heatmaps[bee.tag_id] += bee.cells_visited[yx_coord]
-                all_tracked_all_xy_points_heatmaps['All'] += bee.cells_visited[yx_coord]
+                all_tracked_individuals_heatmaps[bee.tag_id][yx_coord] += 1
+                all_tracked_individuals_heatmaps['All'][yx_coord] += 1
+                all_tracked_all_xy_points_heatmaps[bee.tag_id][yx_coord] += bee.cells_visited[yx_coord]
+                all_tracked_all_xy_points_heatmaps['All'][yx_coord] += bee.cells_visited[yx_coord]
 
-                if bee.path_length > self.min_time_tracked:
-                    min_tracked_individuals_heatmaps[bee.tag_id] += 1
-                    min_tracked_individuals_heatmaps['All'] += 1
-                    min_tracked_all_xy_points_heatmaps[bee.tag_id] += bee.cells_visited[yx_coord]
-                    min_tracked_all_xy_points_heatmaps['All'] += bee.cells_visited[yx_coord]
+                if bee.length_tracked > self.min_time_tracked:
+                    #print('if', bee.length_tracked)
+                    min_tracked_individuals_heatmaps[bee.tag_id][yx_coord] += 1
+                    min_tracked_individuals_heatmaps['All'][yx_coord] += 1
+                    min_tracked_all_xy_points_heatmaps[bee.tag_id][yx_coord] += bee.cells_visited[yx_coord]
+                    min_tracked_all_xy_points_heatmaps['All'][yx_coord] += bee.cells_visited[yx_coord]
+
+        heatmap_dictionaries_list = [all_tracked_individuals_heatmaps, all_tracked_all_xy_points_heatmaps, min_tracked_individuals_heatmaps, min_tracked_all_xy_points_heatmaps]
 
         spread_heatmap_dicts  = [{},{},{},{}]
-        for i, heatmap_tag_dict in enumerate([all_tracked_individuals_heatmaps, all_tracked_all_xy_points_heatmaps, min_tracked_individuals_heatmaps, min_tracked_all_xy_points_heatmaps]):
-            for tag_group in heatmap_tag_dict:
-                norm_heatmap = heatmap_tag_dict[tag_group] / heatmap_tag_dict[tag_group].sum()
+
+        for tag_group in heatmap_dictionaries_list[0]:
+            for i, hm_dictionary in enumerate(heatmap_dictionaries_list):
+                norm_heatmap = heatmap_dictionaries_list[i][tag_group] / heatmap_dictionaries_list[i][tag_group].sum()
                 centre = ndimage.measurements.center_of_mass(norm_heatmap)
                 spread = 0
                 for y_c in range(0, norm_heatmap.shape[0]):
@@ -276,7 +286,7 @@ class Experiment:
             all_tracked_speeds[bee.tag_id].extend(bee.list_speeds)
             all_tracked_speeds['All'].extend(bee.list_speeds)
 
-            if bee.path_length > self.min_time_tracked:
+            if bee.length_tracked > self.min_time_tracked:
                 min_tracked_speeds[bee.tag_id].extend(bee.list_speeds)
                 min_tracked_speeds['All'].extend(bee.list_speeds)
 
