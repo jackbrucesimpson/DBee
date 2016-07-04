@@ -30,36 +30,40 @@ class LogData:
                         'result_type': [],
                         'tag_type': []}
 
-    def log_output(self, ):
-        '''Checks for missing data as it takes dictionary of weather metrics, date and time period (hour is optional) and adds it to output dictionary'''
-        self.output['date'].append(date)
-        self.output['time_period'].append(time_period)
-        self.output['hour'].append(hour)
+    def log_output(self, day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+                    night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
+                    day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
+                    night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                    day_num, result_type):
 
-        for metric in weather_metrics.keys():
-            if metric in self.output.keys():
-                self.output[metric].append(weather_metrics[metric])
-            else:
-                self.output[metric] = [np.nan] * (len(self.output['time_period']) - 1)
-                self.output[metric].append(weather_metrics[metric])
+        for tag_type in day_spread_all_tracked_individuals:
 
-        metrics_to_update = set(self.output.keys()) - set(weather_metrics.keys())
-        for metric in metrics_to_update:
-            self.output[metric].extend((len(self.output['date']) - len(self.output[metric])) * [np.nan])
+            self.output['spread_all_tracked_individuals'].extend([night_spread_all_tracked_individuals[tag_type], day_spread_all_tracked_individuals[tag_type]])
+            self.output['spread_all_tracked_all_xy'].extend([night_spread_all_tracked_all_xy[tag_type], day_spread_all_tracked_all_xy[tag_type]])
+            self.output['spread_min_tracked_individuals'].extend([night_spread_min_tracked_individuals[tag_type], day_spread_min_tracked_individuals[tag_type]])
+            self.output['spread_min_tracked_all_xy'].extend([night_spread_min_tracked_all_xy[tag_type], day_spread_min_tracked_all_xy[tag_type]])
+
+            self.output['diff_spread_all_tracked_individuals'].extend([abs(day_spread_all_tracked_individuals[tag_type] - night_spread_all_tracked_individuals[tag_type]), np.nan])
+            self.output['diff_spread_all_tracked_all_xy'].extend([abs(day_spread_all_tracked_all_xy[tag_type] - night_spread_all_tracked_all_xy[tag_type]), np.nan])
+            self.output['diff_spread_min_tracked_individuals'].extend([abs(day_spread_min_tracked_individuals[tag_type] - night_spread_min_tracked_individuals[tag_type]), np.nan])
+            self.output['diff_spread_min_tracked_all_xy'].extend([abs(day_spread_min_tracked_all_xy[tag_type] - night_spread_min_tracked_all_xy[tag_type]), np.nan])
+
+            self.output['mean_all_tracked_speeds'].extend([night_mean_all_tracked_speeds[tag_type], day_mean_all_tracked_speeds[tag_type]])
+            self.output['mean_min_tracked_speeds'].extend([night_mean_min_tracked_speeds[tag_type], day_mean_min_tracked_speeds[tag_type]])
+            self.output['median_all_tracked_speeds'].extend([night_median_all_tracked_speeds[tag_type], day_median_all_tracked_speeds[tag_type]])
+            self.output['median_min_tracked_speeds'].extend([night_median_min_tracked_speeds[tag_type], day_median_min_tracked_speeds[tag_type]])
+
+            self.output['diff_mean_all_tracked_speeds'].extend([abs(day_mean_all_tracked_speeds[tag_type] - night_mean_all_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_mean_min_tracked_speeds'].extend([abs(day_mean_min_tracked_speeds[tag_type] - night_mean_min_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_median_all_tracked_speeds'].extend([abs(day_median_all_tracked_speeds[tag_type] - night_median_all_tracked_speeds[tag_type]), np.nan])
+            self.output['diff_median_min_tracked_speeds'].extend([abs(day_median_min_tracked_speeds[tag_type] - night_median_min_tracked_speeds[tag_type]), np.nan])
+
+            self.output['day_num'].extend([day_num, day_num])
+            self.output['time_period'].extend(['night', 'day'])
+            self.output['result_type'].extend([result_type, result_type])
+            self.output['tag_type'].extend([tag_type, tag_type])
 
         return None
-
-    def write_output(self, path_filename):
-        '''Checks for missing data and then writes output to csv'''
-        for column in self.output.keys():
-            if len(self.output[column]) < len(self.output['date']):
-                self.output[column].extend((len(self.output['date']) - len(self.output[column])) * [np.nan])
-
-        if not path_filename.endswith('csv'):
-            path_filename += '.csv'
-
-        output_df = pd.DataFrame(self.output)
-        output_df.to_csv(path_filename, index=False)
 
 def main():
     pass

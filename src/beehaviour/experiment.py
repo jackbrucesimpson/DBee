@@ -10,6 +10,7 @@ from scipy import ndimage
 from .db import DB
 from .graphics import Graphics
 from .bee import Bee
+from .logdata import LogData
 
 class Experiment:
     def __init__(self, hive_id):
@@ -26,33 +27,9 @@ class Experiment:
         self.min_tracked_for_classification = 100
         self.min_time_tracked = 25 * 5
 
-        # time_period = 'day', 'night'
-        # result_type = 'real', 'shuffled', 'bootstrapped'
-        # tag_type = 0: unclassified, 1: circle treatment, 2: rectangle control, 3: blank queen, 'All': All tags
-        self.output = {'spread_all_tracked_individuals': [],
-                        'spread_all_tracked_all_xy': [],
-                        'spread_min_tracked_individuals': [],
-                        'spread_min_tracked_all_xy': [],
-                        'diff_spread_all_tracked_individuals': [],
-                        'diff_spread_all_tracked_all_xy': [],
-                        'diff_spread_min_tracked_individuals': [],
-                        'diff_spread_min_tracked_all_xy': [],
-                        'mean_all_tracked_speeds': [],
-                        'mean_min_tracked_speeds': [],
-                        'median_all_tracked_speeds': [],
-                        'median_min_tracked_speeds': [],
-                        'diff_mean_all_tracked_speeds': [],
-                        'diff_mean_min_tracked_speeds': [],
-                        'diff_median_all_tracked_speeds': [],
-                        'diff_median_min_tracked_speeds': [],
-                        'day_num': [],
-                        'time_period': [],
-                        'result_type': [],
-                        'tag_type': []}
+        self.logger = LogData()
 
         hour_blocks_in_experiment = self.retrieve_hour_blocks_in_experiment(hive_id)
-        #print(hive_id)
-        #print(hour_blocks_in_experiment)
         day_hour_bins, night_hour_bins = self.group_hours_by_night_day(hour_blocks_in_experiment)
 
         self.day_grouped_bees = self.retrieve_bees_in_time_period(day_hour_bins)
@@ -162,7 +139,7 @@ class Experiment:
         #self.generate_angles(day_beeids, bee_id_dict, 'day_{}'.format(day_num))
         #self.generate_angles(night_beeids, bee_id_dict, 'night_{}'.format(day_num))
 
-        self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+        self.logger.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                         night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
                         day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
@@ -194,7 +171,7 @@ class Experiment:
             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(bootstrapped_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(bootstrapped_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
-            self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+            self.logger.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
                             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
@@ -330,41 +307,6 @@ class Experiment:
                 if bee.path_length > self.min_time_tracked:
                     min_tracked_angles[bee.tag_id] += angles_hist
                     min_tracked_angles['All'] += angles_hist
-
-        return None
-
-    def log_output(self, day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
-                    night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
-                    day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
-                    night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
-                    day_num, result_type):
-
-        for tag_type in day_spread_all_tracked_individuals:
-
-            self.output['spread_all_tracked_individuals'].extend([night_spread_all_tracked_individuals[tag_type], day_spread_all_tracked_individuals[tag_type]])
-            self.output['spread_all_tracked_all_xy'].extend([night_spread_all_tracked_all_xy[tag_type], day_spread_all_tracked_all_xy[tag_type]])
-            self.output['spread_min_tracked_individuals'].extend([night_spread_min_tracked_individuals[tag_type], day_spread_min_tracked_individuals[tag_type]])
-            self.output['spread_min_tracked_all_xy'].extend([night_spread_min_tracked_all_xy[tag_type], day_spread_min_tracked_all_xy[tag_type]])
-
-            self.output['diff_spread_all_tracked_individuals'].extend([abs(day_spread_all_tracked_individuals[tag_type] - night_spread_all_tracked_individuals[tag_type]), np.nan])
-            self.output['diff_spread_all_tracked_all_xy'].extend([abs(day_spread_all_tracked_all_xy[tag_type] - night_spread_all_tracked_all_xy[tag_type]), np.nan])
-            self.output['diff_spread_min_tracked_individuals'].extend([abs(day_spread_min_tracked_individuals[tag_type] - night_spread_min_tracked_individuals[tag_type]), np.nan])
-            self.output['diff_spread_min_tracked_all_xy'].extend([abs(day_spread_min_tracked_all_xy[tag_type] - night_spread_min_tracked_all_xy[tag_type]), np.nan])
-
-            self.output['mean_all_tracked_speeds'].extend([night_mean_all_tracked_speeds[tag_type], day_mean_all_tracked_speeds[tag_type]])
-            self.output['mean_min_tracked_speeds'].extend([night_mean_min_tracked_speeds[tag_type], day_mean_min_tracked_speeds[tag_type]])
-            self.output['median_all_tracked_speeds'].extend([night_median_all_tracked_speeds[tag_type], day_median_all_tracked_speeds[tag_type]])
-            self.output['median_min_tracked_speeds'].extend([night_median_min_tracked_speeds[tag_type], day_median_min_tracked_speeds[tag_type]])
-
-            self.output['diff_mean_all_tracked_speeds'].extend([abs(day_mean_all_tracked_speeds[tag_type] - night_mean_all_tracked_speeds[tag_type]), np.nan])
-            self.output['diff_mean_min_tracked_speeds'].extend([abs(day_mean_min_tracked_speeds[tag_type] - night_mean_min_tracked_speeds[tag_type]), np.nan])
-            self.output['diff_median_all_tracked_speeds'].extend([abs(day_median_all_tracked_speeds[tag_type] - night_median_all_tracked_speeds[tag_type]), np.nan])
-            self.output['diff_median_min_tracked_speeds'].extend([abs(day_median_min_tracked_speeds[tag_type] - night_median_min_tracked_speeds[tag_type]), np.nan])
-
-            self.output['day_num'].extend([day_num, day_num])
-            self.output['time_period'].extend(['night', 'day'])
-            self.output['result_type'].extend([result_type, result_type])
-            self.output['tag_type'].extend([tag_type, tag_type])
 
         return None
 

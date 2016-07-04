@@ -24,8 +24,8 @@ def main():
         for day_num, day_grouped_bees in enumerate(experiment.day_grouped_bees):
             experiment.calculate_day_night_metrics(day_num)
 
-        output_df = pd.DataFrame(experiment.output)
-        output_df.to_csv('{}{}_output.csv'.format(experiment.output_dir, experiment.hive_id))
+        output_df = pd.DataFrame(experiment.logger.output)
+        output_df.to_csv('{}{}_output.csv'.format(experiment.output_dir, experiment.hive_id), index=False)
 
 if __name__ == "__main__":
     main()
