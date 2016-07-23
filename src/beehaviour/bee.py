@@ -13,6 +13,7 @@ class Bee:
         self.list_speeds = []
         self.list_angles = []
         self.cells_visited = {}
+        self.frame_xy = {}
 
 def main():
     pass

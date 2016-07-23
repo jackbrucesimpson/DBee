@@ -31,6 +31,18 @@ class Graphics:
         plt.close()
 
     @staticmethod
+    def plot_values_over_time(list_of_values, title, filename):
+        plt.figure()
+        plt.plot(list(range(len(list_of_values))), list_of_values)
+        plt.xlabel("Frame")
+        plt.ylabel("Value")
+        plt.title(title)
+        plt.savefig(filename)
+        plt.clf()
+        plt.close()
+        title, filename
+
+    @staticmethod
     def create_angles_hist(angles):
         C = 360
         N = C / 20

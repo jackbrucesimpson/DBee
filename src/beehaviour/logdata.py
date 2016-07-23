@@ -25,6 +25,21 @@ class LogData:
                         'diff_mean_min_tracked_speeds': [],
                         'diff_median_all_tracked_speeds': [],
                         'diff_median_min_tracked_speeds': [],
+
+                        'mean_node_degree': [],
+                        'median_node_degree': [],
+                        'mean_density': [],
+                        'median_density': [],
+                        'mean_clustering': [],
+                        'median_clustering': [],
+
+                        'diff_mean_node_degree': [],
+                        'diff_median_node_degree': [],
+                        'diff_mean_density': [],
+                        'diff_median_density': [],
+                        'diff_mean_clustering': [],
+                        'diff_median_clustering': [],
+
                         'day_num': [],
                         'time_period': [],
                         'result_type': [],
@@ -34,6 +49,7 @@ class LogData:
                     night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
                     day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                     night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
+                    day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
                     day_num, result_type):
 
         for tag_type in day_spread_all_tracked_individuals:
@@ -57,6 +73,20 @@ class LogData:
             self.output['diff_mean_min_tracked_speeds'].extend([abs(day_mean_min_tracked_speeds[tag_type] - night_mean_min_tracked_speeds[tag_type]), np.nan])
             self.output['diff_median_all_tracked_speeds'].extend([abs(day_median_all_tracked_speeds[tag_type] - night_median_all_tracked_speeds[tag_type]), np.nan])
             self.output['diff_median_min_tracked_speeds'].extend([abs(day_median_min_tracked_speeds[tag_type] - night_median_min_tracked_speeds[tag_type]), np.nan])
+
+            self.output['mean_node_degree'].extend([np.mean(day_list_node_degree), np.mean(night_list_node_degree)])
+            self.output['median_node_degree'].extend([np.median(day_list_node_degree), np.median(night_list_node_degree)])
+            self.output['mean_density'].extend([np.mean(day_list_density), np.mean(night_list_density)])
+            self.output['median_density'].extend([np.median(day_list_density), np.median(night_list_density)])
+            self.output['mean_clustering'].extend([np.mean(day_list_clustering), np.mean(night_list_clustering)])
+            self.output['median_clustering'].extend([np.median(day_list_clustering), np.median(night_list_clustering)])
+
+            self.output['diff_mean_node_degree'].extend([abs(np.mean(day_list_node_degree) - np.mean(night_list_node_degree)), np.nan])
+            self.output['diff_median_node_degree'].extend([abs(np.median(day_list_node_degree) - np.median(night_list_node_degree)), np.nan])
+            self.output['diff_mean_density'].extend([abs(np.mean(day_list_density) - np.mean(night_list_density)), np.nan])
+            self.output['diff_median_density'].extend([abs(np.median(day_list_density) - np.median(night_list_density)), np.nan])
+            self.output['diff_mean_clustering'].extend([abs(np.mean(day_list_clustering) - np.mean(night_list_clustering)), np.nan])
+            self.output['diff_median_clustering'].extend([abs(np.median(day_list_clustering) - np.median(night_list_clustering)), np.nan])
 
             self.output['day_num'].extend([day_num, day_num])
             self.output['time_period'].extend(['night', 'day'])
