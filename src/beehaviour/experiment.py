@@ -100,7 +100,6 @@ class Experiment:
         else:
             night_hours.append(current_hours_group)
 
-        #print(night_hours)
         return (day_hours, night_hours)
 
     def retrieve_bees_in_time_period(self, time_period_list_datetimes):
@@ -155,7 +154,7 @@ class Experiment:
                         day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
                         day_num, 'real')
 
-        self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
+        #self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
 
     def permutation_tests(self, day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, num_iterations):
         for i in range(num_iterations):
@@ -198,6 +197,8 @@ class Experiment:
     def retrieve_process_bees(self, list_bees):
         bee_id_dict = {bee.bee_id: bee for bee in list_bees}
         list_bee_ids = list(bee_id_dict.keys())
+
+        bee_locations_by_frame = {}
 
         db = DB()
         for i in range(0, len(list_bee_ids),200):
@@ -265,8 +266,9 @@ class Experiment:
         list_avg_node_degree, list_density, list_avg_clustering = ([],[],[])
         for frame in frame_numbers:
             frame_count += 1
-            if frame_count < 25:
+            if frame_count < 50:
                 continue
+            frame_count = 0
             bee_xy_list_nearby_bee_xy = {}
             for bee_xy in frame_num_list_xy[frame]:
                 bee_xy_list_nearby_bee_xy[bee_xy] = []
