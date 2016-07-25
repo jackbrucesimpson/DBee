@@ -130,8 +130,7 @@ class Experiment:
         print('Period', day_num)
         day_bees = self.day_grouped_bees[day_num]
         night_bees = self.night_grouped_bees[day_num]
-        combined_day_night_bees = day_bees + night_bees
-        bee_id_dict = self.retrieve_process_bees(combined_day_night_bees)
+        bee_id_dict, downsampled_bee_locations_by_frame = self.retrieve_process_bees(day_bees, night_bees)
 
         day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(day_bees, bee_id_dict, 'day_{}'.format(day_num))
         night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(night_bees, bee_id_dict, 'night_{}'.format(day_num))
@@ -141,8 +140,8 @@ class Experiment:
         day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(day_bees, bee_id_dict, 'day_{}'.format(day_num))
         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
-        day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(day_bees, bee_id_dict, 'day_{}'.format(day_num))
-        night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(night_bees, bee_id_dict, 'night_{}'.format(day_num))
+        day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(downsampled_bee_locations_by_frame, 'day_{}'.format(day_num))
+        night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(downsampled_bee_locations_by_frame, 'night_{}'.format(day_num))
 
         #self.generate_angles(day_beeids, bee_id_dict, 'day_{}'.format(day_num))
         #self.generate_angles(night_beeids, bee_id_dict, 'night_{}'.format(day_num))
@@ -154,6 +153,7 @@ class Experiment:
                         day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
                         day_num, 'real')
 
+        #pass downsampled_bee_locations_by_frame to tests
         #self.permutation_tests(day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, 1000)
 
     def permutation_tests(self, day_bees, night_bees, combined_day_night_bees, bee_id_dict, day_num, num_iterations):
@@ -166,8 +166,8 @@ class Experiment:
             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(shuffled_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(shuffled_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
-            day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(shuffled_day_bees, bee_id_dict, 'shuffled_network_day_{}_{}'.format(day_num, i))
-            night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(shuffled_night_bees, bee_id_dict, 'shuffled_network_night_{}_{}'.format(day_num, i))
+            #day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(shuffled_day_bees, bee_id_dict, 'shuffled_network_day_{}_{}'.format(day_num, i))
+            #night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(shuffled_night_bees, bee_id_dict, 'shuffled_network_night_{}_{}'.format(day_num, i))
 
             self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
@@ -184,8 +184,8 @@ class Experiment:
             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(bootstrapped_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(bootstrapped_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
 
-            day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(bootstrapped_day_bees, bee_id_dict, 'shuffled_network_day_{}_{}'.format(day_num, i))
-            night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(bootstrapped_night_bees, bee_id_dict, 'shuffled_network_night_{}_{}'.format(day_num, i))
+            #day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(bootstrapped_day_bees, bee_id_dict, 'shuffled_network_day_{}_{}'.format(day_num, i))
+            #night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(bootstrapped_night_bees, bee_id_dict, 'shuffled_network_night_{}_{}'.format(day_num, i))
 
             self.logger.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
@@ -194,11 +194,15 @@ class Experiment:
                             day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
                             day_num, 'bootstrapped')
 
-    def retrieve_process_bees(self, list_bees):
-        bee_id_dict = {bee.bee_id: bee for bee in list_bees}
+    def retrieve_process_bees(self, day_bees, night_bees):
+        day_bee_ids = list(day_bees.keys())
+        night_bee_ids = list(night_bees.keys())
+
+        bee_id_dict = {bee.bee_id: bee for bee in (day_bee_ids + night_bee_ids) }
         list_bee_ids = list(bee_id_dict.keys())
 
-        bee_locations_by_frame = {}
+        day_bee_locations_by_frame = {}
+        night_bee_locations_by_frame = {}
 
         db = DB()
         for i in range(0, len(list_bee_ids),200):
@@ -212,7 +216,20 @@ class Experiment:
                 y = int(row['Y'] / self.y_bins)
                 yx_coord = (y, x)
                 # for finding close interactions
-                bee_id_dict[bee_id].frame_xy[row['Frame']] = (row['X'], row['Y'])
+                #bee_id_dict[bee_id].frame_xy[row['Frame']] = (row['X'], row['Y'])
+                time_period_locations_by_frame = None
+                if bee_id in day_bee_ids:
+                    time_period_locations_by_frame = day_bee_locations_by_frame
+                elif bee_id in night_bee_ids:
+                    time_period_locations_by_frame = night_bee_locations_by_frame
+                else:
+                    print("Problem")
+
+                if row['Frame'] in time_period_locations_by_frame.keys():
+                    time_period_locations_by_frame[row['Frame']].append((row['X'], row['Y']))
+                else:
+                    time_period_locations_by_frame[row['Frame']] = [(row['X'], row['Y'])]
+
                 # heatmap location
                 if yx_coord in bee_id_dict[bee_id].cells_visited:
                     bee_id_dict[bee_id].cells_visited[yx_coord] += 1
@@ -241,38 +258,21 @@ class Experiment:
                     bee_id_dict[bee_id].last_y = row['Y']
 
         db.close()
-        return bee_id_dict
 
-    def identify_relationships(self, list_bees, bee_id_dict, plot_title):
-        frame_numbers = []
-        frame_num_list_xy = {}
-        for each_bee in list_bees:
-            bee_id = each_bee.bee_id
-            bee = bee_id_dict[bee_id]
-            frames_bee_visited = list(bee.frame_xy.keys())
-            frame_numbers.extend(frames_bee_visited)
-            for frame in frames_bee_visited:
-                if frame in frame_num_list_xy.keys():
-                    frame_num_list_xy[frame].append(bee.frame_xy[frame])
-                else:
-                    frame_num_list_xy[frame] = [bee.frame_xy[frame]]
+        downsampled_bee_locations_by_frame = {}
+        for i, frame in enumerate(bee_locations_by_frame.keys()):
+            if i % 50 == 0:
+                downsampled_bee_locations_by_frame[frame] = bee_locations_by_frame[frame]
 
-        frame_numbers = list(set(frame_numbers))
-        frame_numbers.sort()
+        return (bee_id_dict, downsampled_bee_locations_by_frame)
 
-        #frame_num_cutoff = frame_numbers[(25 * 60 * 60)]
-        frame_count = 0
-
+    def identify_relationships(self, downsampled_bee_locations_by_frame, plot_title):
         list_avg_node_degree, list_density, list_avg_clustering = ([],[],[])
-        for frame in frame_numbers:
-            frame_count += 1
-            if frame_count < 50:
-                continue
-            frame_count = 0
+        for frame in downsampled_bee_locations_by_frame.keys():
             bee_xy_list_nearby_bee_xy = {}
-            for bee_xy in frame_num_list_xy[frame]:
+            for bee_xy in downsampled_bee_locations_by_frame[frame]:
                 bee_xy_list_nearby_bee_xy[bee_xy] = []
-                for other_bees_xy in frame_num_list_xy[frame]:
+                for other_bees_xy in downsampled_bee_locations_by_frame[frame]:
                     if bee_xy != other_bees_xy and Experiment.calc_distance(bee_xy[0], bee_xy[1], other_bees_xy[0], other_bees_xy[1]) < 200:
                         bee_xy_list_nearby_bee_xy[bee_xy].append(other_bees_xy)
 
