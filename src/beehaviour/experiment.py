@@ -153,8 +153,7 @@ class Experiment:
                         day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
                         day_num, 'real')
 
-        #pass downsampled_bee_locations_by_frame to tests
-        self.permutation_tests(day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, 1000)
+        #self.permutation_tests(day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, 100)
 
     def permutation_tests(self, day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, num_iterations):
         combined_day_night_bees = day_bees + night_bees
@@ -176,7 +175,7 @@ class Experiment:
             day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(shuffled_day_locations_bees, 'shuffled_network_day_{}_{}'.format(day_num, i))
             night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(shuffled_night_locations_bees, 'shuffled_network_night_{}_{}'.format(day_num, i))
 
-            self.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
+            self.logger.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
                             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
@@ -281,7 +280,7 @@ class Experiment:
             bee_xy_list_nearby_bee_xy = {}
             for bee_xy in bees_in_frame:
                 bee_xy_list_nearby_bee_xy[bee_xy] = []
-                for other_bees_xy in downsampled_bee_locations:
+                for other_bees_xy in bees_in_frame:
                     if bee_xy != other_bees_xy and Experiment.calc_distance(bee_xy[0], bee_xy[1], other_bees_xy[0], other_bees_xy[1]) < 200:
                         bee_xy_list_nearby_bee_xy[bee_xy].append(other_bees_xy)
 
