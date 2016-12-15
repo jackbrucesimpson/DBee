@@ -17,14 +17,14 @@ from .logdata import LogData
 class Experiment:
     def __init__(self, hive_id):
         self.hive_id = hive_id
-        self.output_dir = '/Users/jack/Research/DBee/results/'
+        self.output_dir = '../results/'
 
         self.num_x_cells = 40
         self.num_y_cells = 20
         self.x_bins = 3840/self.num_x_cells
         self.y_bins = 2160/self.num_y_cells
         self.frames_per_window = 25
-        self.min_angle_speed = 60
+        self.min_angle_speed = 30
         self.tag_confidence_percentage = 0.8
         self.min_tracked_for_classification = 100
         self.min_time_tracked = 25 * 5
@@ -113,7 +113,6 @@ class Experiment:
             #print(query_statement)
             hours_query_result = db.query(query_statement)
             for bee_row in hours_query_result:#[:100]: ##### change
-                #print()
                 if bee_row['TagConfidence'] > self.tag_confidence_percentage:
                     bee = Bee(bee_row['BeeID'], bee_row['TagID'], bee_row['LengthTracked'])
                     bees_in_time_group.append(bee)
@@ -140,6 +139,9 @@ class Experiment:
         day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(day_bees, bee_id_dict, 'day_{}'.format(day_num))
         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(night_bees, bee_id_dict, 'night_{}'.format(day_num))
 
+        day_percent_idle_all_tracked, day_percent_idle_min_tracked = self.idle_percentage(day_bees, bee_id_dict, 'day_{}'.format(day_num))
+        night_percent_idle_all_tracked, night_percent_idle_min_tracked = self.idle_percentage(night_bees, bee_id_dict, 'night_{}'.format(day_num))
+
         day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(day_downsampled_bee_locations, 'day_{}'.format(day_num))
         night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(night_downsampled_bee_locations, 'night_{}'.format(day_num))
 
@@ -151,26 +153,75 @@ class Experiment:
                         day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                         night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
                         day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
+                        day_percent_idle_all_tracked, day_percent_idle_min_tracked, night_percent_idle_all_tracked, night_percent_idle_min_tracked,
                         day_num, 'real')
 
-        #self.permutation_tests(day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, 100)
+        #test_circadian: True=shuffles day and night; False=shuffles tag types
+        self.permutation_tests(day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, 100, test_circadian=False)
 
-    def permutation_tests(self, day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_dict, day_num, num_iterations):
+    def permutation_tests(self, day_bees, night_bees, day_downsampled_bee_locations, night_downsampled_bee_locations, bee_id_d, day_num, num_iterations, test_circadian):
         combined_day_night_bees = day_bees + night_bees
         combined_locations_day_night_bees = day_downsampled_bee_locations + night_downsampled_bee_locations
 
+        day_bees_grouped_by_tag = {0:[], 1:[], 2:[], 3:[]}
+        night_bees_grouped_by_tag = {0:[], 1:[], 2:[], 3:[]}
+        for each_bee in day_bees:
+            bee_id = each_bee.bee_id
+            bee_id = each_bee.bee_id
+            bee = bee_id_d[bee_id]
+            day_bees_grouped_by_tag[bee.tag_id].append(bee)
+        for each_bee in night_bees:
+            bee_id = each_bee.bee_id
+            bee_id = each_bee.bee_id
+            bee = bee_id_d[bee_id]
+            night_bees_grouped_by_tag[bee.tag_id].append(bee)
+
         for i in range(num_iterations):
+            bee_id_dict = copy.deepcopy(bee_id_d)
 
-            shuffled_day_bees = np.random.choice(combined_day_night_bees, len(day_bees), replace=True)
-            shuffled_night_bees = np.random.choice(combined_day_night_bees, len(night_bees), replace=True)
+            if test_circadian:
+                random.shuffle(combined_day_night_bees)
+                shuffled_day_bees = combined_day_night_bees[:len(day_bees)]
+                shuffled_night_bees = combined_day_night_bees[len(day_bees):]
 
-            shuffled_day_locations_bees = np.random.choice(combined_locations_day_night_bees, len(day_bees), replace=True)
-            shuffled_night_locations_bees = np.random.choice(combined_locations_day_night_bees, len(night_bees), replace=True)
+                random.shuffle(combined_locations_day_night_bees)
+                shuffled_day_locations_bees = combined_locations_day_night_bees[:len(day_downsampled_bee_locations)]
+                shuffled_night_locations_bees = combined_locations_day_night_bees[len(day_downsampled_bee_locations):]
+
+            else:
+                random.shuffle(day_bees)
+                random.shuffle(night_bees)
+                shuffled_day_bees = day_bees
+                shuffled_night_bees = night_bees
+
+                shuffled_day_locations_bees = day_downsampled_bee_locations
+                shuffled_night_locations_bees = night_downsampled_bee_locations
+
+                num_bees_iterated = 0
+                for tag_type in day_bees_grouped_by_tag:
+                    for each_bee in day_bees[num_bees_iterated:len(day_bees_grouped_by_tag[tag_type])]:
+                        bee_id = each_bee.bee_id
+                        bee_id = each_bee.bee_id
+                        bee = bee_id_dict[bee_id]
+                        bee.tag_id = tag_type
+                    num_bees_iterated += len(day_bees_grouped_by_tag[tag_type])
+
+                num_bees_iterated = 0
+                for tag_type in night_bees_grouped_by_tag:
+                    for each_bee in night_bees[num_bees_iterated:len(night_bees_grouped_by_tag[tag_type])]:
+                        bee_id = each_bee.bee_id
+                        bee_id = each_bee.bee_id
+                        bee = bee_id_dict[bee_id]
+                        bee.tag_id = tag_type
+                    num_bees_iterated += len(night_bees_grouped_by_tag[tag_type])
 
             day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(shuffled_day_bees, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(shuffled_night_bees, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(shuffled_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(shuffled_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
+
+            day_percent_idle_all_tracked, day_percent_idle_min_tracked = self.idle_percentage(shuffled_day_bees, bee_id_dict, 'shuffled_percent_idle_day_{}_{}'.format(day_num, i))
+            night_percent_idle_all_tracked, night_percent_idle_min_tracked = self.idle_percentage(shuffled_night_bees, bee_id_dict, 'shuffled_percent_idle_night_{}_{}'.format(day_num, i))
 
             day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(shuffled_day_locations_bees, 'shuffled_network_day_{}_{}'.format(day_num, i))
             night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(shuffled_night_locations_bees, 'shuffled_network_night_{}_{}'.format(day_num, i))
@@ -180,27 +231,49 @@ class Experiment:
                             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
                             day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
+                            day_percent_idle_all_tracked, day_percent_idle_min_tracked, night_percent_idle_all_tracked, night_percent_idle_min_tracked,
                             day_num, 'shuffled')
 
-            bootstrapped_day_bees = np.random.choice(day_bees, len(day_bees), replace=True)
-            bootstrapped_night_bees = np.random.choice(night_bees, len(night_bees), replace=True)
+            if test_circadian:
+                bootstrapped_day_bees = np.random.choice(day_bees, len(day_bees), replace=True)
+                bootstrapped_night_bees = np.random.choice(night_bees, len(night_bees), replace=True)
 
-            bootstrapped_day_locations_bees = np.random.choice(day_downsampled_bee_locations, len(day_bees), replace=True)
-            bootstrapped_night_locations_bees = np.random.choice(night_downsampled_bee_locations, len(night_bees), replace=True)
+                bootstrapped_day_locations_bees = np.random.choice(day_downsampled_bee_locations, len(day_downsampled_bee_locations), replace=True)
+                bootstrapped_night_locations_bees = np.random.choice(night_downsampled_bee_locations, len(night_downsampled_bee_locations), replace=True)
 
-            day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_day_bees, bee_id_dict, 'shuffled_spread_day_{}_{}'.format(day_num, i))
-            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_night_bees, bee_id_dict, 'shuffled_spread_night_{}_{}'.format(day_num, i))
-            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(bootstrapped_day_bees, bee_id_dict, 'shuffled_speed_day_{}_{}'.format(day_num, i))
-            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(bootstrapped_night_bees, bee_id_dict, 'shuffled_speed_night_{}_{}'.format(day_num, i))
+            else:
+                bootstrapped_day_bees = []
+                bootstrapped_night_bees = []
 
-            day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(bootstrapped_day_locations_bees, 'shuffled_network_day_{}_{}'.format(day_num, i))
-            night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(bootstrapped_night_locations_bees, 'shuffled_network_night_{}_{}'.format(day_num, i))
+                bootstrapped_day_locations_bees = day_downsampled_bee_locations
+                bootstrapped_night_locations_bees = night_downsampled_bee_locations
+
+                for tag_type in day_bees_grouped_by_tag:
+                    bootstrapped_tags = np.random.choice(day_bees_grouped_by_tag[tag_type], len(day_bees_grouped_by_tag[tag_type]), replace=True)
+                    bootstrapped_day_bees.extend(bootstrapped_tags)
+
+                for tag_type in night_bees_grouped_by_tag:
+                    bootstrapped_tags = np.random.choice(day_bees_grouped_by_tag[tag_type], len(day_bees_grouped_by_tag[tag_type]), replace=True)
+                    bootstrapped_night_bees.extend(bootstrapped_tags)
+
+            day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_day_bees, bee_id_dict, 'bootstrapped_spread_day_{}_{}'.format(day_num, i))
+            night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy = self.generate_heatmaps(bootstrapped_night_bees, bee_id_dict, 'bootstrapped_spread_night_{}_{}'.format(day_num, i))
+
+            day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds = self.generate_speeds(bootstrapped_day_bees, bee_id_dict, 'bootstrapped_speed_day_{}_{}'.format(day_num, i))
+            night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds = self.generate_speeds(bootstrapped_night_bees, bee_id_dict, 'bootstrapped_speed_night_{}_{}'.format(day_num, i))
+
+            day_percent_idle_all_tracked, day_percent_idle_min_tracked = self.idle_percentage(bootstrapped_day_bees, bee_id_dict, 'bootstrapped_percent_idle_day_{}_{}'.format(day_num, i))
+            night_percent_idle_all_tracked, night_percent_idle_min_tracked = self.idle_percentage(bootstrapped_night_bees, bee_id_dict, 'bootstrapped_percent_idle_night_{}_{}'.format(day_num, i))
+
+            day_list_node_degree, day_list_density, day_list_clustering = self.identify_relationships(bootstrapped_day_locations_bees, 'bootstrapped_network_day_{}_{}'.format(day_num, i))
+            night_list_node_degree, night_list_density, night_list_clustering = self.identify_relationships(bootstrapped_night_locations_bees, 'bootstrapped_network_night_{}_{}'.format(day_num, i))
 
             self.logger.log_output(day_spread_all_tracked_individuals, day_spread_all_tracked_all_xy, day_spread_min_tracked_individuals, day_spread_min_tracked_all_xy,
                             night_spread_all_tracked_individuals, night_spread_all_tracked_all_xy, night_spread_min_tracked_individuals, night_spread_min_tracked_all_xy,
                             day_mean_all_tracked_speeds, day_mean_min_tracked_speeds, day_median_all_tracked_speeds, day_median_min_tracked_speeds,
                             night_mean_all_tracked_speeds, night_mean_min_tracked_speeds, night_median_all_tracked_speeds, night_median_min_tracked_speeds,
                             day_list_node_degree, day_list_density, day_list_clustering, night_list_node_degree, night_list_density, night_list_clustering,
+                            day_percent_idle_all_tracked, day_percent_idle_min_tracked, night_percent_idle_all_tracked, night_percent_idle_min_tracked,
                             day_num, 'bootstrapped')
 
     def retrieve_process_bees(self, day_bees, night_bees):
@@ -243,9 +316,12 @@ class Experiment:
                         if bee_id_dict[bee_id].path_length == self.frames_per_window:
                             current_speed = Experiment.calc_distance(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y)
                             bee_id_dict[bee_id].list_speeds.append(current_speed)
+                            bee_id_dict[bee_id].seconds_tracked += 1
                             if current_speed >= self.min_angle_speed:
                                 angle = Experiment.absolute_angle_degree(row['X'], row['Y'], bee_id_dict[bee_id].last_x, bee_id_dict[bee_id].last_y)
                                 bee_id_dict[bee_id].list_angles.append(angle)
+                            else:
+                                bee_id_dict[bee_id].seconds_idle += 1
 
                             bee_id_dict[bee_id].path_length = 1
                             bee_id_dict[bee_id].last_x = row['X']
@@ -264,7 +340,7 @@ class Experiment:
             frames_list = list(time_period_locations_by_frame.keys())
             frames_list.sort()
             for i, frame in enumerate(frames_list):
-                if i % 100 == 0:
+                if i % 1000 == 0:
                     downsampled_bee_locations.append(time_period_locations_by_frame[frame])
 
             return downsampled_bee_locations
@@ -410,6 +486,42 @@ class Experiment:
             median_min_tracked_speeds[tag_id] = np.median(min_tracked_speeds[tag_id])
 
         return [mean_all_tracked_speeds, mean_min_tracked_speeds, median_all_tracked_speeds, median_min_tracked_speeds]
+
+    def idle_percentage(self, list_bees, bee_id_dict, plot_title):
+        # list, first element is incrementing time idle, second is incremented total time track
+        all_tracked_idle_total = {0: [0,0],
+                                1: [0,0],
+                                2: [0,0],
+                                3: [0,0],
+                                'All': [0,0]}
+        min_tracked_idle_total = copy.deepcopy(all_tracked_idle_total)
+
+        for each_bee in list_bees:
+            bee_id = each_bee.bee_id
+            bee = bee_id_dict[bee_id]
+            all_tracked_idle_total[bee.tag_id][0] += (bee.seconds_idle)
+            all_tracked_idle_total[bee.tag_id][1] += (bee.seconds_tracked)
+            all_tracked_idle_total['All'][0] += (bee.seconds_idle)
+            all_tracked_idle_total['All'][1] += (bee.seconds_tracked)
+
+            if bee.length_tracked > self.min_time_tracked:
+                min_tracked_idle_total[bee.tag_id][0] += (bee.seconds_idle)
+                min_tracked_idle_total[bee.tag_id][1] += (bee.seconds_tracked)
+                min_tracked_idle_total['All'][0] += (bee.seconds_idle)
+                min_tracked_idle_total['All'][1] += (bee.seconds_tracked)
+
+        percent_idle_all_tracked, percent_idle_min_tracked = ({}, {})
+        for tag_id in all_tracked_idle_total:
+            if all_tracked_idle_total[tag_id][1] != 0:
+                percent_idle_all_tracked[tag_id] = all_tracked_idle_total[tag_id][0] / all_tracked_idle_total[tag_id][1]
+            else:
+                percent_idle_all_tracked[tag_id] = 0
+            if min_tracked_idle_total[tag_id][1] != 0:
+                percent_idle_min_tracked[tag_id] = min_tracked_idle_total[tag_id][0] / min_tracked_idle_total[tag_id][1]
+            else:
+                percent_idle_min_tracked[tag_id] = 0
+
+        return [percent_idle_all_tracked, percent_idle_min_tracked]
 
     def generate_angles(self, list_bees, bee_id_dict, plot_title):
         all_tracked_angles = {0: np.zeros(360 / 20),

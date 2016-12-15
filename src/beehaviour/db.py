@@ -9,8 +9,9 @@ class DB:
     _db_cur = None
 
     def __init__(self):
-        password = os.environ.get("DBPW", None)
-        self._db_con = pymysql.connect(host='localhost', port=3306, user='root', passwd=password, db='beedb')
+        user = 'jack'#'root'#
+        password = ''#os.environ.get("DBPW", None)#''#
+        self._db_con = pymysql.connect(host='localhost', port=3306, user=user, passwd=password, db='beedb')
 
     def last_insert_id(self):
         query_string = "SELECT LAST_INSERT_ID()"

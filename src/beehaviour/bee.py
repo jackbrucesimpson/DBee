@@ -14,6 +14,8 @@ class Bee:
         self.list_angles = []
         self.cells_visited = {}
         self.frame_xy = {}
+        self.seconds_idle = 0
+        self.seconds_tracked = 0
 
 def main():
     pass
